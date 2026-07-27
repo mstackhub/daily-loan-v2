@@ -133,6 +133,9 @@ export default function DebtorsPage() {
             const overdueInfo = loan ? getLoanOverdueInfo(loan, payments) : null;
             const isOverdue = overdueInfo?.isOverdue ?? false;
 
+            const lender = loan && loan.lender_id ? lenders.find((l) => l.id === loan.lender_id) : null;
+            const lenderName = lender ? lender.name : "ไม่มีรายชื่อผู้กู้";
+
             if (isGridView) {
               return (
                 <Link href={`/debtors/${debtor.id}`} key={debtor.id}>
@@ -158,9 +161,15 @@ export default function DebtorsPage() {
                     </div>
 
                     {loan ? (
-                      <div className="pt-2.5 border-t border-slate-100/80 flex justify-between items-center text-xs">
-                        <span className="text-slate-400">ค้างต้น</span>
-                        <span className="text-slate-700 font-bold">{formatCurrency(loan.remaining_principal)}</span>
+                      <div className="pt-2.5 border-t border-slate-100/80 space-y-1 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">ค้างต้น</span>
+                          <span className="text-slate-700 font-bold">{formatCurrency(loan.remaining_principal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">ผู้ให้กู้</span>
+                          <span className="text-slate-600 font-medium truncate max-w-[80px]">{lenderName}</span>
+                        </div>
                       </div>
                     ) : (
                       <div className="pt-2.5 border-t border-slate-100/80 flex justify-between items-center text-xs">
@@ -198,7 +207,7 @@ export default function DebtorsPage() {
                     </div>
                     {loan ? (
                       <p className="text-slate-500 text-xs mt-0.5">
-                        ต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)}
+                        ต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)} | ผู้ให้กู้: <span className="text-slate-700 font-semibold">{lenderName}</span>
                       </p>
                     ) : (
                       <p className="text-slate-400 text-xs mt-0.5">{formatPhone(debtor.phone)}</p>
