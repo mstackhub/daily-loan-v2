@@ -39,7 +39,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
       </head>
       <body
-        className={`${inter.variable} ${notoSansThai.variable} font-sans bg-slate-50 text-slate-800 antialiased`}
+        className={`${inter.variable} ${notoSansThai.variable} font-sans bg-white text-slate-800 antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

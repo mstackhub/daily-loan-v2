@@ -175,7 +175,7 @@
    LIGHT MODE OVERRIDES (When html does not have .dark)
    ============================================ */
 html:not(.dark) body {
-  background-color: #f8fafc !important;
+  background-color: #ffffff !important;
   background-image: none !important;
   color: #0f172a !important;
 }
