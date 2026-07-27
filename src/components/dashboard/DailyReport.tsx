@@ -1,56 +1,54 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAppStore } from "@/stores/appStore";
 import { getLoanOverdueInfo } from "@/lib/business-logic/interest";
 import { formatCurrency, formatThaiDate, getTodayStr } from "@/lib/utils";
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
-import { ChevronLeft, ChevronRight, CheckCircle2, Calendar } from "lucide-react";
+import { CheckCircle2, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
   onReceivePayment: (loanId: string) => void;
 }
 
-type DateRange = "today" | "week" | "month";
+type DateRangeType = "today" | "week" | "month" | "custom";
 
 export function DailyReport({ onReceivePayment }: Props) {
-  const { debtors, loans, payments, currentReportDate, setCurrentReportDate } = useAppStore();
+  const { debtors, loans, payments } = useAppStore();
   const [activeTab, setActiveTab] = useState<"unpaid" | "paid">("unpaid");
-  const [dateRange, setDateRange] = useState<DateRange>("today");
+  const [dateRange, setDateRange] = useState<DateRangeType>("today");
 
-  // Date helpers
   const today = getTodayStr();
-  const isToday = currentReportDate === today;
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
 
-  function changeDate(delta: number) {
-    const d = new Date(currentReportDate + "T12:00:00");
-    d.setDate(d.getDate() + delta);
-    setCurrentReportDate(d.toISOString().split("T")[0]);
-    setDateRange("today"); // reset to day mode when navigating
-  }
+  // Automatically update start and end dates when clicking Today/Week/Month presets
+  useEffect(() => {
+    const baseDate = new Date();
+    
+    if (dateRange === "today") {
+      setStartDate(today);
+      setEndDate(today);
+    } else if (dateRange === "week") {
+      const day = baseDate.getDay();
+      const diff = baseDate.getDate() - day + (day === 0 ? -6 : 1); // Monday
+      const start = new Date(baseDate);
+      start.setDate(diff);
+      
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6); // Sunday
 
-  // Check if a payment falls in the same week as the selected date
-  function isSameWeek(dateStr: string, baseDateStr: string): boolean {
-    const date = new Date(dateStr.slice(0, 10));
-    const base = new Date(baseDateStr + "T12:00:00");
-    const day = base.getDay();
-    const diff = base.getDate() - day + (day === 0 ? -6 : 1); // Monday start
-    const start = new Date(base);
-    start.setDate(diff);
-    start.setHours(0, 0, 0, 0);
+      setStartDate(start.toISOString().split("T")[0]);
+      setEndDate(end.toISOString().split("T")[0]);
+    } else if (dateRange === "month") {
+      const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+      const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
 
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-
-    return date >= start && date <= end;
-  }
-
-  // Check if a payment falls in the same month as the selected date
-  function isSameMonth(dateStr: string, baseDateStr: string): boolean {
-    return dateStr.slice(0, 7) === baseDateStr.slice(0, 7);
-  }
+      setStartDate(start.toISOString().split("T")[0]);
+      setEndDate(end.toISOString().split("T")[0]);
+    }
+  }, [dateRange, today]);
 
   const reportItems = useMemo(() => {
     return loans
@@ -61,23 +59,14 @@ export function DailyReport({ onReceivePayment }: Props) {
 
         const loanPayments = payments.filter((p) => p.loan_id === loan.id);
         
-        // Calculate status depending on range filter
-        let paidInRange = false;
-        if (dateRange === "today") {
-          paidInRange = loanPayments.some(
-            (p) => p.status === "active" && p.payment_date.startsWith(currentReportDate)
-          );
-        } else if (dateRange === "week") {
-          paidInRange = loanPayments.some(
-            (p) => p.status === "active" && isSameWeek(p.payment_date, currentReportDate)
-          );
-        } else if (dateRange === "month") {
-          paidInRange = loanPayments.some(
-            (p) => p.status === "active" && isSameMonth(p.payment_date, currentReportDate)
-          );
-        }
+        // Filter payments that fall inside the selected [startDate, endDate] range
+        const paidInRange = loanPayments.some((p) => {
+          if (p.status !== "active") return false;
+          const payDateStr = p.payment_date.slice(0, 10);
+          return payDateStr >= startDate && payDateStr <= endDate;
+        });
 
-        const overdueInfo = getLoanOverdueInfo(loan, payments, new Date(currentReportDate + "T12:00:00"));
+        const overdueInfo = getLoanOverdueInfo(loan, payments);
 
         return { loan, debtor, overdueInfo, paidToday: paidInRange };
       })
@@ -87,7 +76,7 @@ export function DailyReport({ onReceivePayment }: Props) {
         overdueInfo: ReturnType<typeof getLoanOverdueInfo>;
         paidToday: boolean;
       }>;
-  }, [loans, debtors, payments, currentReportDate, dateRange]);
+  }, [loans, debtors, payments, startDate, endDate]);
 
   const unpaidItems = reportItems.filter((i) => !i.paidToday);
   const paidItems = reportItems.filter((i) => i.paidToday);
@@ -95,107 +84,101 @@ export function DailyReport({ onReceivePayment }: Props) {
 
   const displayItems = activeTab === "unpaid" ? unpaidItems : paidItems;
 
-  // Thai date and label formatting
-  const dateObj = new Date(currentReportDate + "T12:00:00");
-  const DAYS = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
-  const dayLabel = DAYS[dateObj.getDay()];
-  
   const formattedLabel = useMemo(() => {
-    if (dateRange === "today") {
-      return `${dayLabel} ${formatThaiDate(currentReportDate)}`;
+    if (startDate === endDate) {
+      return formatThaiDate(startDate);
     }
-    if (dateRange === "week") {
-      // Find start and end of week
-      const day = dateObj.getDay();
-      const diff = dateObj.getDate() - day + (day === 0 ? -6 : 1);
-      const start = new Date(dateObj);
-      start.setDate(diff);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-
-      const startStr = formatThaiDate(start.toISOString().split("T")[0]).replace(/ \d{2}$/, ""); // remove year
-      const endStr = formatThaiDate(end.toISOString().split("T")[0]);
-      return `สัปดาห์: ${startStr} - ${endStr}`;
-    }
-    if (dateRange === "month") {
-      const THAI_MONTHS_FULL = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-      return `เดือน: ${THAI_MONTHS_FULL[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
-    }
-    return "";
-  }, [currentReportDate, dateRange, dayLabel]);
+    const startStr = formatThaiDate(startDate).replace(/ \d{2}$/, ""); // remove year
+    const endStr = formatThaiDate(endDate);
+    return `${startStr} - ${endStr}`;
+  }, [startDate, endDate]);
 
   return (
     <div className="glass-card overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-white/[0.06]">
+      <div className="p-4 border-b border-slate-100">
         {/* Quick Range Selection Tabs */}
         <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/40 mb-3.5">
           <button
             onClick={() => setDateRange("today")}
-            className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all", dateRange === "today" ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all", dateRange === "today" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
           >
             วันนี้
           </button>
           <button
             onClick={() => setDateRange("week")}
-            className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all", dateRange === "week" ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all", dateRange === "week" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
           >
             สัปดาห์นี้
           </button>
           <button
             onClick={() => setDateRange("month")}
-            className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all", dateRange === "month" ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all", dateRange === "month" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
           >
             เดือนนี้
           </button>
         </div>
 
-        <div className="flex items-center justify-between mb-3.5">
-          <h2 className="text-sm font-bold text-slate-800">
-            {dateRange === "today" ? "รายงานเก็บเงินรายวัน" : dateRange === "week" ? "รายงานเก็บเงินรายสัปดาห์" : "รายงานเก็บเงินรายเดือน"}
-          </h2>
+        <div className="flex flex-col gap-2.5 mb-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-800">
+              {dateRange === "today" ? "รายงานเก็บเงินรายวัน" : dateRange === "week" ? "รายงานเก็บเงินรายสัปดาห์" : dateRange === "month" ? "รายงานเก็บเงินรายเดือน" : "รายงานเก็บเงินกำหนดเอง"}
+            </h2>
+          </div>
 
-          {/* Dynamic Date Picker & Navigation */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => changeDate(-1)}
-              className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200/80 transition-colors active:scale-95 border border-slate-200/50"
-            >
-              <ChevronLeft className="w-4 h-4 text-slate-600" />
-            </button>
-
-            {/* Dynamic Date input wrapped in styled box */}
-            <div className="relative flex items-center bg-slate-100 hover:bg-slate-200/80 transition-colors border border-slate-200/50 rounded-lg px-2.5 py-1.5 cursor-pointer gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
-              <span className="text-[11px] font-semibold text-slate-700 whitespace-nowrap min-w-[70px] text-center">
-                {dateRange === "today" ? `${dayLabel} ${formatThaiDate(currentReportDate).slice(0, -3)}` : "เลือกวันที่"}
-              </span>
+          {/* Dynamic Range Pickers: From Date -> To Date */}
+          <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200/40">
+            {/* From Date */}
+            <div className="relative flex-1 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors border border-slate-200/60 rounded-lg px-2.5 py-1.5 cursor-pointer">
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-[9px] font-bold text-slate-400 uppercase">เริ่มต้น</span>
+                <span className="text-[11px] font-bold text-slate-700 truncate">
+                  {formatThaiDate(startDate).slice(0, -3)}
+                </span>
+              </div>
+              <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
               <input
                 type="date"
-                value={currentReportDate}
+                value={startDate}
                 onChange={(e) => {
                   if (e.target.value) {
-                    setCurrentReportDate(e.target.value);
-                    setDateRange("today");
+                    setStartDate(e.target.value);
+                    setDateRange("custom");
                   }
                 }}
                 className="absolute inset-0 opacity-0 cursor-pointer w-full"
               />
             </div>
 
-            <button
-              onClick={() => changeDate(1)}
-              disabled={isToday}
-              className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200/80 transition-colors active:scale-95 disabled:opacity-30 border border-slate-200/50"
-            >
-              <ChevronRight className="w-4 h-4 text-slate-600" />
-            </button>
+            <span className="text-slate-400 text-xs font-medium flex-shrink-0">至</span>
+
+            {/* To Date */}
+            <div className="relative flex-1 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors border border-slate-200/60 rounded-lg px-2.5 py-1.5 cursor-pointer">
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-[9px] font-bold text-slate-400 uppercase">สิ้นสุด</span>
+                <span className="text-[11px] font-bold text-slate-700 truncate">
+                  {formatThaiDate(endDate).slice(0, -3)}
+                </span>
+              </div>
+              <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setEndDate(e.target.value);
+                    setDateRange("custom");
+                  }
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full"
+              />
+            </div>
           </div>
         </div>
 
         {/* Selected Range Display Label */}
-        <p className="text-xs text-slate-500 font-medium mb-3">
-          {formattedLabel} {isToday && dateRange === "today" && <span className="text-primary-500 font-semibold">(วันนี้)</span>}
+        <p className="text-xs text-slate-500 font-semibold mb-3.5">
+          📅 {formattedLabel} {startDate === today && dateRange === "today" && <span className="text-primary-500 font-bold ml-1">(วันนี้)</span>}
         </p>
 
         {/* Progress bar */}
@@ -206,7 +189,7 @@ export function DailyReport({ onReceivePayment }: Props) {
               style={{ width: `${progress * 100}%` }}
             />
           </div>
-          <span className="text-xs font-semibold text-slate-500 flex-shrink-0">
+          <span className="text-xs font-bold text-slate-500 flex-shrink-0">
             {paidItems.length}/{reportItems.length} คน
           </span>
         </div>
@@ -216,13 +199,13 @@ export function DailyReport({ onReceivePayment }: Props) {
       <div className="flex border-b border-slate-100 bg-slate-50/50">
         <button
           onClick={() => setActiveTab("unpaid")}
-          className={cn("tab-btn flex-1 py-3 text-xs font-semibold", activeTab === "unpaid" && "active")}
+          className={cn("tab-btn flex-1 py-3 text-xs font-bold", activeTab === "unpaid" && "active")}
         >
           ยังไม่จ่าย ({unpaidItems.length})
         </button>
         <button
           onClick={() => setActiveTab("paid")}
-          className={cn("tab-btn flex-1 py-3 text-xs font-semibold", activeTab === "paid" && "active")}
+          className={cn("tab-btn flex-1 py-3 text-xs font-bold", activeTab === "paid" && "active")}
         >
           จ่ายแล้ว ({paidItems.length})
         </button>
@@ -233,7 +216,7 @@ export function DailyReport({ onReceivePayment }: Props) {
         {displayItems.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-4xl mb-2">🎉</p>
-            <p className="text-slate-400 text-xs font-medium">
+            <p className="text-slate-400 text-xs font-semibold">
               {activeTab === "unpaid" ? "เก็บเงินครบเรียบร้อยแล้ว!" : "ยังไม่มีรายการชำระเงิน"}
             </p>
           </div>
