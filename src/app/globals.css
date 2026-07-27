@@ -200,7 +200,9 @@ html:not(.dark) [class*="btn-"] *,
 html:not(.dark) .avatar,
 html:not(.dark) .avatar *,
 html:not(.dark) .avatar-sm,
-html:not(.dark) .avatar-sm * {
+html:not(.dark) .avatar-sm *,
+html:not(.dark) svg.text-white,
+html:not(.dark) svg.text-white * {
   color: #ffffff !important;
 }
 
