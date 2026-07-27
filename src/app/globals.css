@@ -180,7 +180,7 @@ html:not(.dark) body {
   color: #0f172a !important;
 }
 
-html:not(.dark) .text-white {
+html:not(.dark) .text-white:not(button):not(svg):not(path):not([class*="btn-"]):not(.avatar):not(.avatar-sm) {
   color: #0f172a !important;
 }
 
