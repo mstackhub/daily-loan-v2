@@ -186,14 +186,14 @@ export default function DebtorsPage() {
               <div
                 key={debtor.id}
                 className={cn(
-                  "glass-card-sm flex items-center gap-3 p-3",
+                  "glass-card-sm flex items-center gap-3 p-3.5 hover:bg-slate-50/50 transition-colors",
                   isOverdue && "border-red-500/30"
                 )}
               >
                 <Link href={`/debtors/${debtor.id}`} className="flex items-center gap-3 flex-1 min-w-0">
                   <DebtorAvatar debtor={debtor} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-slate-800 text-sm font-semibold truncate">{debtor.full_name}</p>
                       {debtor.status === "closed" ? (
                         <span className="badge-closed flex-shrink-0 text-[10px] px-2 py-0.5">ปิดยอดแล้ว</span>
@@ -204,13 +204,18 @@ export default function DebtorsPage() {
                           </span>
                         )
                       )}
+                      {lender && (
+                        <span className="px-1.5 py-0.5 bg-violet-50 text-violet-600 rounded-md text-[9px] font-bold border border-violet-100 flex-shrink-0">
+                          ทุน: {lender.name}
+                        </span>
+                      )}
                     </div>
                     {loan ? (
-                      <p className="text-slate-500 text-xs mt-0.5">
-                        ต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)} | ผู้ให้กู้: <span className="text-slate-700 font-semibold">{lenderName}</span>
+                      <p className="text-slate-400 text-xs mt-1">
+                        ต้น <span className="text-slate-600 font-semibold">{formatCurrency(loan.remaining_principal)}</span> | ดอก <span className="text-slate-600 font-semibold">{formatCurrency(loan.interest_per_period)}</span>
                       </p>
                     ) : (
-                      <p className="text-slate-400 text-xs mt-0.5">{formatPhone(debtor.phone)}</p>
+                      <p className="text-slate-400 text-xs mt-1">{formatPhone(debtor.phone)}</p>
                     )}
                   </div>
                   <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0" />
