@@ -87,6 +87,7 @@ export function BottomNav() {
                 </span>
               </Link>
             );
+          })}
         </div>
     </nav>
   );
