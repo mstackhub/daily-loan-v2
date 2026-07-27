@@ -11,7 +11,7 @@ import { Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const { debtors, loans, payments } = useAppStore();
+  const { debtors, loans, payments, lenders } = useAppStore();
   const [showAddDebtor, setShowAddDebtor] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => {
     return new Date().toISOString().split("T")[0];
@@ -79,6 +79,26 @@ export default function DashboardPage() {
     };
   }, [loans, payments, selectedDate]);
 
+  const lenderStats = useMemo(() => {
+    return lenders.map((lender) => {
+      const lenderActiveLoans = loans.filter((l) => l.lender_id === lender.id && l.status === "active");
+      const outstandingPrincipal = lenderActiveLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
+
+      const todayLenderPayments = payments.filter((p) => {
+        const loan = loans.find((l) => l.id === p.loan_id);
+        return loan && loan.lender_id === lender.id && p.status === "active" && p.payment_date.startsWith(selectedDate);
+      });
+      const interestCollectedToday = todayLenderPayments.reduce((sum, p) => sum + p.interest_paid, 0);
+
+      return {
+        id: lender.id,
+        name: lender.name,
+        outstandingPrincipal,
+        interestCollectedToday,
+      };
+    });
+  }, [lenders, loans, payments, selectedDate]);
+
   const lastMonthThaiName = useMemo(() => {
     const d = new Date(selectedDate + "T12:00:00");
     d.setMonth(d.getMonth() - 1);
@@ -107,7 +127,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="px-4 space-y-4 py-5 pb-8">
+      <div className="px-4 space-y-4 py-5 pb-24">
         {/* Stat Cards */}
         <StatCards stats={stats} />
 
@@ -128,6 +148,30 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Lenders Summary Card */}
+        {lenders.length > 0 && (
+          <div className="glass-card p-4.5 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="text-slate-800 font-bold text-sm">ยอดแยกตามทุน (ประจำวัน)</span>
+              <span className="text-[10px] bg-violet-50 text-violet-600 font-bold px-2.5 py-0.5 rounded-full border border-violet-100">ผู้ให้กู้ทั้งหมด</span>
+            </div>
+            <div className="divide-y divide-slate-100 max-h-[220px] overflow-y-auto pr-1">
+              {lenderStats.map((l) => (
+                <div key={l.id} className="flex justify-between items-center py-2.5 text-xs">
+                  <div>
+                    <span className="text-slate-800 font-bold block">{l.name}</span>
+                    <span className="text-slate-400 text-[10px]">ทุนค้างในตลาด: {formatCurrency(l.outstandingPrincipal)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-emerald-600 font-extrabold block text-sm">{formatCurrency(l.interestCollectedToday)}</span>
+                    <span className="text-slate-400 text-[10px]">เก็บดอกได้วันนี้</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* FAB */}
