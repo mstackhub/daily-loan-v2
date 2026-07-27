@@ -197,12 +197,10 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                     <span className="text-white/40 block text-xs">วันที่เริ่มกู้</span>
                     <span className="text-white font-medium">{formatThaiDate(loan.loan_date)}</span>
                   </div>
-                  {loanLender && (
-                    <div>
-                      <span className="text-white/40 block text-xs">ผู้ให้กู้ (นายทุน)</span>
-                      <span className="text-white font-medium">{loanLender.name}</span>
-                    </div>
-                  )}
+                  <div>
+                    <span className="text-white/40 block text-xs">ผู้ให้กู้ (นายทุน)</span>
+                    <span className="text-white font-medium">{loanLender ? loanLender.name : "ไม่มีรายชื่อผู้กู้"}</span>
+                  </div>
                 </div>
               </div>
             ) : (

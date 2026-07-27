@@ -13,9 +13,10 @@ import Link from "next/link";
 type FilterTab = "all" | "active" | "closed";
 
 export default function DebtorsPage() {
-  const { debtors, loans, payments } = useAppStore();
+  const { debtors, loans, payments, lenders } = useAppStore();
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
+  const [selectedLenderId, setSelectedLenderId] = useState<string>("all");
   const [isGridView, setIsGridView] = useState(false);
   const [showAddDebtor, setShowAddDebtor] = useState(false);
   const [paymentLoanId, setPaymentLoanId] = useState<string | null>(null);
@@ -28,6 +29,18 @@ export default function DebtorsPage() {
         return true;
       })
       .filter((d) => {
+        if (selectedLenderId === "all") return true;
+        const activeLoan = loans.find((l) => l.debtor_id === d.id && l.status === "active")
+          ?? loans.filter((l) => l.debtor_id === d.id).sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )[0];
+        
+        if (selectedLenderId === "none") {
+          return !activeLoan || !activeLoan.lender_id;
+        }
+        return activeLoan && activeLoan.lender_id === selectedLenderId;
+      })
+      .filter((d) => {
         if (!search) return true;
         const q = search.toLowerCase();
         return (
@@ -35,7 +48,7 @@ export default function DebtorsPage() {
           d.phone.includes(q)
         );
       });
-  }, [debtors, loans, search, filterTab]);
+  }, [debtors, loans, search, filterTab, selectedLenderId]);
 
   const counts = useMemo(() => ({
     all: debtors.length,
@@ -66,6 +79,24 @@ export default function DebtorsPage() {
             placeholder="ค้นหาชื่อ หรือเบอร์โทร..."
             className="input-field pl-9 pr-4"
           />
+        </div>
+
+        {/* Lender Filter */}
+        <div className="mb-4">
+          <label className="text-[10px] text-slate-400 block mb-1 font-bold">กรองตามผู้ให้กู้ (นายทุน)</label>
+          <select
+            value={selectedLenderId}
+            onChange={(e) => setSelectedLenderId(e.target.value)}
+            className="input-field py-2 text-xs bg-slate-50 border border-slate-200/50 text-slate-800 rounded-xl"
+          >
+            <option value="all" className="bg-dark-800 text-white">-- ผู้ให้กู้ทั้งหมด --</option>
+            <option value="none" className="bg-dark-800 text-white">ไม่มีรายชื่อผู้กู้</option>
+            {lenders.map((l) => (
+              <option key={l.id} value={l.id} className="bg-dark-800 text-white">
+                {l.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Tabs + View toggle */}
