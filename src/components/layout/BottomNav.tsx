@@ -58,11 +58,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto"
+      className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-dark-800/90 backdrop-blur-xl border-t border-white/[0.08] shadow-nav"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="bg-dark-800/90 backdrop-blur-xl border-t border-white/[0.08] shadow-nav">
-        <div className="flex items-stretch">
+      <div className="flex items-stretch">
           {NAV_ITEMS.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
@@ -88,9 +87,7 @@ export function BottomNav() {
                 </span>
               </Link>
             );
-          })}
         </div>
-      </div>
     </nav>
   );
 }
