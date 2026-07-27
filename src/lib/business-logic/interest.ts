@@ -5,11 +5,11 @@ import { type Loan, type Payment, type OverdueInfo, type PaymentPreview } from "
 // ============================================
 
 export function parseLocalDate(dateStr: string): Date {
-  const parts = String(dateStr).split("T")[0].split("-");
-  if (parts.length === 3) {
-    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   }
-  return new Date(dateStr);
+  return d;
 }
 
 export function todayLocal(): Date {
