@@ -13,53 +13,59 @@ import { formatCurrency } from "@/lib/utils";
 export default function DashboardPage() {
   const { debtors, loans, payments } = useAppStore();
   const [showAddDebtor, setShowAddDebtor] = useState(false);
-  const [paymentLoanId, setPaymentLoanId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    return new Date().toISOString().split("T")[0];
+  });
 
   const stats = useMemo(() => {
-    // 1. Expected collection today
+    // 1. Expected collection on selected date
     const targetToday = loans
-      .filter((l) => l.status === "active")
+      .filter((l) => l.status === "active" && l.loan_date <= selectedDate)
       .reduce((sum, l) => sum + Math.max(0, l.interest_per_period - (l.guarantee_deduction ?? 0)), 0);
 
-    const todayStr = new Date().toISOString().split("T")[0];
-    const monthStr = todayStr.slice(0, 7);
+    const monthStr = selectedDate.slice(0, 7);
 
-    // Get last month string
-    const lastMonthDate = new Date();
-    lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-    const lastMonthStr = lastMonthDate.toISOString().slice(0, 7);
+    // Get last month string relative to selectedDate
+    const currentMonthDate = new Date(selectedDate + "T12:00:00");
+    currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
+    const lastMonthStr = currentMonthDate.toISOString().slice(0, 7);
 
-    // 2. Today collected
+    // 2. Today collected on selected date
     const todayCollected = payments
-      .filter((p) => p.status === "active" && p.payment_date.startsWith(todayStr))
+      .filter((p) => p.status === "active" && p.payment_date.startsWith(selectedDate))
       .reduce((sum, p) => sum + p.amount, 0);
 
-    // 3. Total outstanding principal
+    // 3. Total outstanding principal as of selected date
     const totalRemaining = loans
-      .filter((l) => l.status === "active")
-      .reduce((sum, l) => sum + l.remaining_principal, 0);
+      .filter((l) => l.loan_date <= selectedDate)
+      .reduce((sum, l) => {
+        const paidBeforeDate = payments
+          .filter((p) => p.loan_id === l.id && p.status === "active" && p.payment_date.split("T")[0] <= selectedDate)
+          .reduce((s, p) => s + (p.principal_paid ?? 0), 0);
+        return sum + Math.max(0, l.principal - paidBeforeDate);
+      }, 0);
 
-    // 4. Total overdue interest
+    // 4. Total overdue interest as of selected date
     const totalOverdue = loans
-      .filter((l) => l.status === "active")
+      .filter((l) => l.loan_date <= selectedDate && l.status === "active")
       .reduce((sum, loan) => {
-        const overdueInfo = getLoanOverdueInfo(loan, payments);
+        const overdueInfo = getLoanOverdueInfo(loan, payments, new Date(selectedDate + "T23:59:59"));
         return sum + overdueInfo.outstandingInterest;
       }, 0);
 
-    // 5. Month interest collected (Actual profit)
+    // 5. Month interest collected as of selected date's month
     const monthInterestCollected = payments
-      .filter((p) => p.status === "active" && p.payment_date.startsWith(monthStr))
+      .filter((p) => p.status === "active" && p.payment_date.slice(0, 7) === monthStr)
       .reduce((sum, p) => sum + p.interest_paid, 0);
 
-    // 6. Last month capital lent
+    // 6. Last month capital lent relative to selectedDate's month
     const lastMonthLent = loans
-      .filter((l) => l.loan_date.startsWith(lastMonthStr))
+      .filter((l) => l.loan_date.slice(0, 7) === lastMonthStr)
       .reduce((sum, l) => sum + l.principal, 0);
 
-    // 7. Last month profit (interest collected)
+    // 7. Last month profit (interest collected) relative to selectedDate's month
     const lastMonthInterestCollected = payments
-      .filter((p) => p.status === "active" && p.payment_date.startsWith(lastMonthStr))
+      .filter((p) => p.status === "active" && p.payment_date.slice(0, 7) === lastMonthStr)
       .reduce((sum, p) => sum + p.interest_paid, 0);
 
     return {
@@ -71,24 +77,37 @@ export default function DashboardPage() {
       lastMonthLent,
       lastMonthInterestCollected,
     };
-  }, [loans, payments]);
+  }, [loans, payments, selectedDate]);
 
   const lastMonthThaiName = useMemo(() => {
-    const d = new Date();
+    const d = new Date(selectedDate + "T12:00:00");
     d.setMonth(d.getMonth() - 1);
     return d.toLocaleDateString("th-TH", { month: "long", year: "2-digit" });
-  }, []);
+  }, [selectedDate]);
 
   return (
     <div className="min-h-dvh bg-slate-50/20">
       {/* Header */}
-      <div className="px-4 pt-12 pb-4">
-        <p className="text-slate-400 text-sm mb-1">สวัสดี 👋</p>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">DebtFlow</h1>
-        <p className="text-slate-400 text-xs mt-0.5">ระบบบริหารลูกหนี้รายวันเวอร์ชันใหม่</p>
+      <div className="px-4 pt-12 pb-4 bg-white border-b border-slate-100/80 shadow-sm flex flex-col gap-3">
+        <div>
+          <p className="text-slate-400 text-sm mb-1">สวัสดี 👋</p>
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">DebtFlow</h1>
+          <p className="text-slate-400 text-xs mt-0.5">ระบบบริหารลูกหนี้รายวันเวอร์ชันใหม่</p>
+        </div>
+
+        {/* Date Selector */}
+        <div className="flex flex-col gap-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">เลือกวันที่เพื่อตรวจสอบข้อมูล</label>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="input-field py-2 text-sm bg-white font-medium text-slate-800 border-slate-200"
+          />
+        </div>
       </div>
 
-      <div className="px-4 space-y-4 pb-8">
+      <div className="px-4 space-y-4 py-5 pb-8">
         {/* Stat Cards */}
         <StatCards stats={stats} />
 
@@ -109,9 +128,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-
-        {/* Daily Report */}
-        <DailyReport onReceivePayment={setPaymentLoanId} />
       </div>
 
       {/* FAB */}
@@ -127,9 +143,6 @@ export default function DashboardPage() {
 
       {/* Sheets */}
       {showAddDebtor && <AddDebtorSheet onClose={() => setShowAddDebtor(false)} />}
-      {paymentLoanId && (
-        <PaymentSheet loanId={paymentLoanId} onClose={() => setPaymentLoanId(null)} />
-      )}
     </div>
   );
 }
