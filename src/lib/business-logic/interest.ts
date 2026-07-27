@@ -67,9 +67,10 @@ export function getLoanOverdueInfo(
     (sum, p) => sum + (p.interest_paid ?? 0), 0
   );
 
-  const expectedInterest = elapsedPeriods * loan.interest_per_period;
+  const netInterest = Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0));
+  const expectedInterest = elapsedPeriods * netInterest;
   const outstandingInterest = Math.max(0, expectedInterest - totalInterestPaid);
-  const overduePeriods = Math.ceil(outstandingInterest / loan.interest_per_period);
+  const overduePeriods = netInterest > 0 ? Math.ceil(outstandingInterest / netInterest) : 0;
 
   return {
     isOverdue: outstandingInterest > 0,
@@ -93,8 +94,8 @@ export function calculatePaymentPreview(
 ): PaymentPreview {
   const overdueInfo = getLoanOverdueInfo(loan, payments, asOfDate);
   const { outstandingInterest, totalInterestPaid } = overdueInfo;
-
-  const ip = loan.interest_per_period;
+  const netInterest = Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0));
+  const ip = netInterest;
   const minPeriods = loan.minimum_periods;
   const remaining = loan.remaining_principal;
 

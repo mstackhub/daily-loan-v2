@@ -67,6 +67,7 @@ export interface Loan {
   principal: number;
   remaining_principal: number;
   interest_per_period: number;
+  guarantee_deduction?: number;
   minimum_periods: number;
   status: LoanStatus;
   payment_frequency: PaymentFrequency;

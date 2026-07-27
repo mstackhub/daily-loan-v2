@@ -21,6 +21,7 @@ const schema = z.object({
   note: z.string().optional(),
   profile_image_url: z.string().optional(),
   lender_id: z.string().optional(),
+  guarantee_deduction: z.number({ message: "กรุณากรอกตัวเลข" }).min(0).optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -51,6 +52,7 @@ export function EditDebtorSheet({ debtor, loan, onClose }: Props) {
       note: debtor.note || "",
       profile_image_url: debtor.profile_image_url || "",
       lender_id: loan?.lender_id || "",
+      guarantee_deduction: loan?.guarantee_deduction || 0,
     },
   });
 
@@ -86,6 +88,7 @@ export function EditDebtorSheet({ debtor, loan, onClose }: Props) {
           .from("loans")
           .update({
             lender_id: data.lender_id || null,
+            guarantee_deduction: data.guarantee_deduction ?? 0,
           })
           .eq("id", loan.id)
           .select()
@@ -175,6 +178,18 @@ export function EditDebtorSheet({ debtor, loan, onClose }: Props) {
                     <option key={l.id} value={l.id} className="bg-dark-800">{l.name}</option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {loan && (
+              <div>
+                <label className="input-label">หักค่าค้ำประกัน/งวด (บาท)</label>
+                <input
+                  {...register("guarantee_deduction", { valueAsNumber: true })}
+                  type="number"
+                  className="input-field"
+                  placeholder="0"
+                />
               </div>
             )}
           </div>

@@ -26,6 +26,7 @@ const schema = z.object({
   payment_frequency: z.enum(["daily", "weekly", "monthly"]),
   principal: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
   interest_per_period: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
+  guarantee_deduction: z.number({ message: "กรุณากรอกตัวเลข" }).min(0),
   minimum_periods: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
 });
 
@@ -54,6 +55,7 @@ export function AddDebtorSheet({ onClose }: Props) {
       loan_date: getTodayStr(),
       payment_frequency: "daily",
       interest_per_period: settings?.default_interest_per_day ?? 100,
+      guarantee_deduction: 0,
       minimum_periods: settings?.default_minimum_days ?? 5,
       principal: 0,
     },
@@ -93,6 +95,7 @@ export function AddDebtorSheet({ onClose }: Props) {
           principal: data.principal,
           remaining_principal: data.principal,
           interest_per_period: data.interest_per_period,
+          guarantee_deduction: data.guarantee_deduction,
           minimum_periods: data.minimum_periods,
           status: "active",
           payment_frequency: data.payment_frequency,
@@ -216,21 +219,30 @@ export function AddDebtorSheet({ onClose }: Props) {
               {errors.principal && <p className="text-red-400 text-xs mt-1">{errors.principal.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="input-label">ดอกเบี้ย/งวด (บาท) *</label>
+                <label className="input-label text-[10px]">ดอกเบี้ย *</label>
                 <input
                   {...register("interest_per_period", { valueAsNumber: true })}
                   type="number"
-                  className="input-field"
+                  className="input-field py-2 text-xs"
                 />
               </div>
               <div>
-                <label className="input-label">งวดขั้นต่ำ *</label>
+                <label className="input-label text-[10px]">หักค้ำประกัน</label>
+                <input
+                  {...register("guarantee_deduction", { valueAsNumber: true })}
+                  type="number"
+                  className="input-field py-2 text-xs"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="input-label text-[10px]">งวดขั้นต่ำ *</label>
                 <input
                   {...register("minimum_periods", { valueAsNumber: true })}
                   type="number"
-                  className="input-field"
+                  className="input-field py-2 text-xs"
                 />
               </div>
             </div>

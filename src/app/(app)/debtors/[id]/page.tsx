@@ -182,8 +182,16 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                     <span className="text-white font-medium">{formatCurrency(loan.principal)}</span>
                   </div>
                   <div>
-                    <span className="text-white/40 block text-xs">ดอกเบี้ยต่อสัปดาห์/วัน</span>
+                    <span className="text-white/40 block text-xs">ดอกเบี้ย/งวด</span>
                     <span className="text-white font-medium">{formatCurrency(loan.interest_per_period)}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block text-xs">หักค้ำประกัน/งวด</span>
+                    <span className="text-white font-medium">{formatCurrency(loan.guarantee_deduction ?? 0)}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block text-xs">ดอกเบี้ยจริง/งวด</span>
+                    <span className="text-emerald-400 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
                   </div>
                   <div>
                     <span className="text-white/40 block text-xs">ความถี่ชำระเงิน</span>
