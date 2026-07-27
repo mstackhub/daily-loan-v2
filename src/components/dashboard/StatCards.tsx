@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
 import { formatCurrency } from "@/lib/utils";
-import { Users, TrendingUp, Calendar, CalendarDays } from "lucide-react";
+import { TrendingUp, Calendar, AlertTriangle, Landmark } from "lucide-react";
 
 interface Props {
   stats: {
-    activeDebtors: number;
-    totalRemaining: number;
+    targetToday: number;
     todayCollected: number;
-    monthCollected: number;
+    totalRemaining: number;
+    totalOverdue: number;
+    monthInterestCollected: number;
   };
 }
 
@@ -24,17 +24,17 @@ interface StatCardProps {
 
 function StatCard({ label, value, sub, icon, gradient, glow }: StatCardProps) {
   return (
-    <div className={`glass-card p-4 relative overflow-hidden`}>
+    <div className="glass-card p-4 relative overflow-hidden">
       {/* Background glow */}
-      <div className={`absolute -top-4 -right-4 w-20 h-20 ${glow} rounded-full blur-2xl opacity-40`} />
+      <div className={`absolute -top-4 -right-4 w-20 h-20 ${glow} rounded-full blur-2xl opacity-15`} />
 
       <div className="flex items-start justify-between relative">
         <div className="flex-1 min-w-0">
-          <p className="text-white/50 text-xs font-medium mb-1.5 truncate">{label}</p>
-          <p className="text-white font-bold text-2xl leading-none">{value}</p>
-          {sub && <p className="text-white/30 text-xs mt-1">{sub}</p>}
+          <p className="text-slate-500 text-xs font-semibold mb-1.5 truncate">{label}</p>
+          <p className="text-slate-800 font-extrabold text-xl leading-none">{value}</p>
+          {sub && <p className="text-slate-400 text-[10px] font-medium mt-1.5">{sub}</p>}
         </div>
-        <div className={`w-10 h-10 ${gradient} rounded-xl flex items-center justify-center flex-shrink-0 ml-2`}>
+        <div className={`w-9 h-9 ${gradient} rounded-xl flex items-center justify-center flex-shrink-0 ml-2`}>
           {icon}
         </div>
       </div>
@@ -43,32 +43,40 @@ function StatCard({ label, value, sub, icon, gradient, glow }: StatCardProps) {
 }
 
 export function StatCards({ stats }: Props) {
+  const collectionRate = stats.targetToday > 0 
+    ? Math.round((stats.todayCollected / stats.targetToday) * 100) 
+    : 0;
+
   const cards = [
     {
-      label: "ลูกหนี้ที่ยังกู้อยู่",
-      value: `${stats.activeDebtors} คน`,
-      icon: <Users className="w-5 h-5 text-white" />,
+      label: "เก็บเงินวันนี้",
+      value: `${formatCurrency(stats.todayCollected)}`,
+      sub: `เป้าเก็บวันนี้: ${formatCurrency(stats.targetToday)} (${collectionRate}%)`,
+      icon: <Calendar className="w-4.5 h-4.5 text-white" />,
       gradient: "bg-gradient-primary",
       glow: "bg-primary-500",
     },
     {
-      label: "เงินต้นคงเหลือรวม",
+      label: "เงินลงทุนคงเหลือ",
       value: formatCurrency(stats.totalRemaining),
-      icon: <TrendingUp className="w-5 h-5 text-white" />,
+      sub: "เงินต้นคงค้างในตลาด",
+      icon: <Landmark className="w-4.5 h-4.5 text-white" />,
       gradient: "bg-gradient-to-br from-indigo-500 to-indigo-700",
       glow: "bg-indigo-500",
     },
     {
-      label: "ยอดรับวันนี้",
-      value: formatCurrency(stats.todayCollected),
-      icon: <Calendar className="w-5 h-5 text-white" />,
-      gradient: "bg-gradient-success",
-      glow: "bg-emerald-500",
+      label: "ดอกเบี้ยค้างชำระ",
+      value: formatCurrency(stats.totalOverdue),
+      sub: "ความเสี่ยงค้างสะสม",
+      icon: <AlertTriangle className="w-4.5 h-4.5 text-white" />,
+      gradient: "bg-gradient-danger",
+      glow: "bg-red-500",
     },
     {
-      label: "ยอดรับเดือนนี้",
-      value: formatCurrency(stats.monthCollected),
-      icon: <CalendarDays className="w-5 h-5 text-white" />,
+      label: "กำไรสะสมเดือนนี้",
+      value: formatCurrency(stats.monthInterestCollected),
+      sub: "ส่วนดอกเบี้ยที่เก็บได้",
+      icon: <TrendingUp className="w-4.5 h-4.5 text-white" />,
       gradient: "bg-gradient-to-br from-teal-500 to-cyan-700",
       glow: "bg-teal-500",
     },

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "@/stores/appStore";
 import { getLoanOverdueInfo } from "@/lib/business-logic/interest";
-import { formatCurrency, formatThaiDate, freqInterestLabel } from "@/lib/utils";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { DailyReport } from "@/components/dashboard/DailyReport";
 import { AddDebtorSheet } from "@/components/debtors/AddDebtorSheet";
@@ -16,40 +15,53 @@ export default function DashboardPage() {
   const [paymentLoanId, setPaymentLoanId] = useState<string | null>(null);
 
   const stats = useMemo(() => {
-    const activeDebtors = debtors.filter((d) => d.status === "active").length;
-    const totalRemaining = loans
+    // 1. Expected collection today
+    const targetToday = loans
       .filter((l) => l.status === "active")
-      .reduce((sum, l) => sum + l.remaining_principal, 0);
+      .reduce((sum, l) => sum + l.interest_per_period, 0);
 
     const todayStr = new Date().toISOString().split("T")[0];
     const monthStr = todayStr.slice(0, 7);
 
+    // 2. Today collected
     const todayCollected = payments
-      .filter(
-        (p) =>
-          p.status === "active" &&
-          p.payment_date.startsWith(todayStr)
-      )
+      .filter((p) => p.status === "active" && p.payment_date.startsWith(todayStr))
       .reduce((sum, p) => sum + p.amount, 0);
 
-    const monthCollected = payments
-      .filter(
-        (p) =>
-          p.status === "active" &&
-          p.payment_date.startsWith(monthStr)
-      )
-      .reduce((sum, p) => sum + p.amount, 0);
+    // 3. Total outstanding principal
+    const totalRemaining = loans
+      .filter((l) => l.status === "active")
+      .reduce((sum, l) => sum + l.remaining_principal, 0);
 
-    return { activeDebtors, totalRemaining, todayCollected, monthCollected };
-  }, [debtors, loans, payments]);
+    // 4. Total overdue interest
+    const totalOverdue = loans
+      .filter((l) => l.status === "active")
+      .reduce((sum, loan) => {
+        const overdueInfo = getLoanOverdueInfo(loan, payments);
+        return sum + overdueInfo.outstandingInterest;
+      }, 0);
+
+    // 5. Month interest collected (Actual profit)
+    const monthInterestCollected = payments
+      .filter((p) => p.status === "active" && p.payment_date.startsWith(monthStr))
+      .reduce((sum, p) => sum + p.interest_paid, 0);
+
+    return {
+      targetToday,
+      todayCollected,
+      totalRemaining,
+      totalOverdue,
+      monthInterestCollected,
+    };
+  }, [loans, payments]);
 
   return (
     <div className="min-h-dvh">
       {/* Header */}
       <div className="px-4 pt-12 pb-4">
-        <p className="text-white/40 text-sm mb-1">สวัสดี 👋</p>
-        <h1 className="text-2xl font-bold text-white">DebtFlow</h1>
-        <p className="text-white/40 text-sm">ระบบบริหารลูกหนี้รายวัน</p>
+        <p className="text-slate-400 text-sm mb-1">สวัสดี 👋</p>
+        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">DebtFlow</h1>
+        <p className="text-slate-400 text-xs mt-0.5">ระบบบริหารลูกหนี้รายวันเวอร์ชันใหม่</p>
       </div>
 
       <div className="px-4 space-y-4 pb-8">
