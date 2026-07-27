@@ -7,6 +7,7 @@ import { formatCurrency, formatThaiDate, getTodayStr } from "@/lib/utils";
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 import { CheckCircle2, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface Props {
   onReceivePayment: (loanId: string) => void;
@@ -222,19 +223,21 @@ export function DailyReport({ onReceivePayment }: Props) {
           </div>
         ) : (
           displayItems.map(({ loan, debtor, overdueInfo, paidToday }) => (
-            <div key={loan.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/40 transition-colors">
-              <DebtorAvatar debtor={debtor} size="sm" />
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-800 text-sm font-bold truncate">{debtor.full_name}</p>
-                <p className="text-slate-400 text-xs mt-0.5">
-                  ค้างต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)}
-                </p>
-                {overdueInfo.isOverdue && dateRange === "today" && (
-                  <span className="text-red-500 text-[10px] font-semibold mt-0.5 block">
-                    เกินกำหนด {overdueInfo.overduePeriods} วัน
-                  </span>
-                )}
-              </div>
+            <div key={loan.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-slate-50/40 transition-colors">
+              <Link href={`/debtors/${debtor.id}`} className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                <DebtorAvatar debtor={debtor} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-slate-800 text-sm font-bold truncate">{debtor.full_name}</p>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    ค้างต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)}
+                  </p>
+                  {overdueInfo.isOverdue && dateRange === "today" && (
+                    <span className="text-red-500 text-[10px] font-semibold mt-0.5 block">
+                      เกินกำหนด {overdueInfo.overduePeriods} วัน
+                    </span>
+                  )}
+                </div>
+              </Link>
               {paidToday ? (
                 <div className="flex items-center gap-1 text-emerald-500 flex-shrink-0">
                   <CheckCircle2 className="w-5 h-5" />
