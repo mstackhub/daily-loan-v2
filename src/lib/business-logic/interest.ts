@@ -31,13 +31,14 @@ export function getLoanOverdueInfo(
   }
 
   const today = asOfDate ?? todayLocal();
+  const overdueAsOf = new Date(today.getTime() - 24 * 60 * 60 * 1000); // Only past days count as overdue
   const loanStart = parseLocalDate(loan.loan_date);
   const freq = loan.payment_frequency ?? "daily";
 
   let elapsedPeriods = 0;
 
-  if (today > loanStart) {
-    const diffMs = today.getTime() - loanStart.getTime();
+  if (overdueAsOf > loanStart) {
+    const diffMs = overdueAsOf.getTime() - loanStart.getTime();
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
     if (freq === "daily") {
@@ -46,12 +47,12 @@ export function getLoanOverdueInfo(
       elapsedPeriods = Math.floor(diffDays / 7);
     } else if (freq === "monthly") {
       let months =
-        (today.getFullYear() - loanStart.getFullYear()) * 12 +
-        (today.getMonth() - loanStart.getMonth());
+        (overdueAsOf.getFullYear() - loanStart.getFullYear()) * 12 +
+        (overdueAsOf.getMonth() - loanStart.getMonth());
       // If not yet reached the same day-of-month, subtract 1
-      if (today.getDate() < loanStart.getDate()) {
-        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        if (today.getDate() !== lastDay || loanStart.getDate() <= lastDay) {
+      if (overdueAsOf.getDate() < loanStart.getDate()) {
+        const lastDay = new Date(overdueAsOf.getFullYear(), overdueAsOf.getMonth() + 1, 0).getDate();
+        if (overdueAsOf.getDate() !== lastDay || loanStart.getDate() <= lastDay) {
           months -= 1;
         }
       }
