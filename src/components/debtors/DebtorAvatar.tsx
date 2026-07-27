@@ -26,7 +26,8 @@ export function DebtorAvatar({ debtor, size = "md", className }: Props) {
   const hasImage =
     debtor.profile_image_url &&
     (debtor.profile_image_url.startsWith("http") ||
-      debtor.profile_image_url.startsWith("data:image"));
+      debtor.profile_image_url.startsWith("data:image") ||
+      debtor.profile_image_url.startsWith("/"));
 
   const initials = debtor.full_name
     ? debtor.full_name.trim().split(" ")[0].charAt(0).toUpperCase()
