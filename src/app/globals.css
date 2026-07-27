@@ -180,8 +180,28 @@ html:not(.dark) body {
   color: #0f172a !important;
 }
 
-html:not(.dark) .text-white:not(button):not(svg):not(path):not([class*="btn-"]):not(.avatar):not(.avatar-sm) {
+html:not(.dark) .text-white {
   color: #0f172a !important;
+}
+
+/* Force elements inside primary gradients, buttons, and avatars to be white */
+html:not(.dark) .bg-gradient-primary,
+html:not(.dark) .bg-gradient-primary *,
+html:not(.dark) .bg-gradient-success,
+html:not(.dark) .bg-gradient-success *,
+html:not(.dark) .bg-gradient-danger,
+html:not(.dark) .bg-gradient-danger *,
+html:not(.dark) .bg-gradient-warning,
+html:not(.dark) .bg-gradient-warning *,
+html:not(.dark) button,
+html:not(.dark) button *,
+html:not(.dark) [class*="btn-"],
+html:not(.dark) [class*="btn-"] *,
+html:not(.dark) .avatar,
+html:not(.dark) .avatar *,
+html:not(.dark) .avatar-sm,
+html:not(.dark) .avatar-sm * {
+  color: #ffffff !important;
 }
 
 html:not(.dark) .text-white\/90 {
