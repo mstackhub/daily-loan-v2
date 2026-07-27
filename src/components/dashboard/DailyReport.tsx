@@ -229,7 +229,7 @@ export function DailyReport({ onReceivePayment }: Props) {
                 <div className="flex-1 min-w-0">
                   <p className="text-slate-800 text-sm font-bold truncate">{debtor.full_name}</p>
                   <p className="text-slate-400 text-xs mt-0.5">
-                    ค้างต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)}
+                    ค้างต้น {formatCurrency(loan.remaining_principal)} | ดอกจริง <span className="text-violet-600 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
                   </p>
                   {overdueInfo.isOverdue && dateRange === "today" && (
                     <span className="text-red-500 text-[10px] font-semibold mt-0.5 block">
