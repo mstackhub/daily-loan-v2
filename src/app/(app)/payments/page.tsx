@@ -71,18 +71,18 @@ export default function PaymentsPage() {
 
         {/* Dashboard Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-gradient-to-br from-violet-500 to-indigo-600 p-3.5 rounded-2xl text-white shadow-md shadow-violet-500/10">
-            <span className="text-[10px] text-white/70 block font-medium">เก็บเงินสำเร็จวันนี้</span>
-            <span className="text-lg font-bold text-white-force block mt-0.5">{formatCurrency(totalCollectedToday)}</span>
-            <span className="text-[9px] text-white/60 block mt-1">เป้าเปรียบเทียบ: {formatCurrency(totalTargetToday)}</span>
+          <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-4.5 rounded-2xl text-white shadow-lg shadow-violet-500/15">
+            <span className="text-white-force block font-bold text-[11px] opacity-80 uppercase tracking-wider">เก็บเงินสำเร็จวันนี้</span>
+            <span className="text-3xl font-extrabold text-white-force block mt-1">{formatCurrency(totalCollectedToday)}</span>
+            <span className="text-white-force block mt-1.5 text-xs font-bold opacity-90">เป้าเปรียบเทียบ: {formatCurrency(totalTargetToday)}</span>
           </div>
 
-          <div className="bg-white border border-slate-200/60 p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+          <div className="bg-white border border-slate-200/60 p-4.5 rounded-2xl shadow-sm flex flex-col justify-between">
             <div>
-              <span className="text-[10px] text-slate-400 block font-medium">ความคืบหน้าเก็บเงิน</span>
-              <span className="text-lg font-bold text-slate-800 block mt-0.5">{progressPercent}%</span>
+              <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">ความคืบหน้า</span>
+              <span className="text-3xl font-extrabold text-slate-800 block mt-1">{progressPercent}%</span>
             </div>
-            <span className="text-[9px] text-slate-500 font-medium mt-1">
+            <span className="text-xs text-slate-600 font-bold block mt-1.5">
               จ่ายแล้ว {paidItems.length} / {reportItems.length} คน
             </span>
           </div>
