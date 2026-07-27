@@ -149,6 +149,12 @@ export default function PaymentsPage() {
                 })
               : "";
 
+            const activeLoansForThisDebtor = loans
+              .filter((l) => l.debtor_id === debtor.id && l.status === "active")
+              .sort((a, b) => new Date(a.loan_date).getTime() - new Date(b.loan_date).getTime());
+            const billIndex = activeLoansForThisDebtor.findIndex((l) => l.id === loan.id) + 1;
+            const billLabel = activeLoansForThisDebtor.length > 1 ? ` (บิล #${billIndex} - ฿${loan.principal})` : "";
+
             return (
               <div
                 key={loan.id}
@@ -160,7 +166,7 @@ export default function PaymentsPage() {
                 <DebtorAvatar debtor={debtor} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-slate-800 text-sm font-semibold truncate">{debtor.full_name}</p>
+                    <p className="text-slate-800 text-sm font-semibold truncate">{debtor.full_name}{billLabel}</p>
                     {overdueInfo.isOverdue && !paidToday && (
                       <span className="badge-overdue flex-shrink-0 text-[9px] px-1.5 py-0.5">
                         ค้าง {overdueInfo.overduePeriods} วัน

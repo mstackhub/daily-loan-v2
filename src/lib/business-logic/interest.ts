@@ -163,7 +163,7 @@ export function recalcRemainingPrincipal(loan: Loan, payments: Payment[]): numbe
     (p) => p.loan_id === loan.id && p.status !== "cancelled"
   );
   const totalPrincipalPaid = activePayments.reduce(
-    (sum, p) => sum + (p.principal_paid ?? 0), 0
+    (sum, p) => sum + (p.principal_paid ?? 0) + (p.principal_discount ?? 0), 0
   );
   return Math.max(0, loan.principal - totalPrincipalPaid);
 }

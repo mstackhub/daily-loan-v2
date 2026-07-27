@@ -25,35 +25,33 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const [showEditDebtor, setShowEditDebtor] = useState(false);
 
   const debtor = debtors.find((d) => d.id === id);
-  const loan = loans.find((l) => l.debtor_id === id && l.status === "active")
-    ?? loans.filter((l) => l.debtor_id === id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
-  const loanLender = useMemo(() => {
-    if (!loan || !loan.lender_id) return null;
-    return lenders.find((l) => l.id === loan.lender_id);
-  }, [loan, lenders]);
+  const debtorLoans = useMemo(() => {
+    return loans
+      .filter((l) => l.debtor_id === id)
+      .sort((a, b) => new Date(b.loan_date).getTime() - new Date(a.loan_date).getTime());
+  }, [loans, id]);
 
-  const loanPayments = useMemo(() => {
-    if (!loan) return [];
-    return payments.filter((p) => p.loan_id === loan.id);
-  }, [payments, loan]);
+  const activeLoan = useMemo(() => {
+    return debtorLoans.find((l) => l.status === "active") || debtorLoans[0] || null;
+  }, [debtorLoans]);
 
   const stats = useMemo(() => {
-    if (!loan) return { remaining: 0, principalPaid: 0, interestPaid: 0 };
-    const remaining = loan.remaining_principal;
-    const activePays = loanPayments.filter((p) => p.status === "active");
-    const principalPaid = activePays.reduce((sum, p) => sum + p.principal_paid, 0);
-    const interestPaid = activePays.reduce((sum, p) => sum + p.interest_paid, 0);
+    const active = debtorLoans.filter((l) => l.status === "active");
+    const remaining = active.reduce((sum, l) => sum + l.remaining_principal, 0);
+    const debtorPayments = payments.filter((p) => p.debtor_id === id && p.status === "active");
+    const principalPaid = debtorPayments.reduce((sum, p) => sum + p.principal_paid, 0);
+    const interestPaid = debtorPayments.reduce((sum, p) => sum + p.interest_paid, 0);
     return { remaining, principalPaid, interestPaid };
-  }, [loan, loanPayments]);
+  }, [debtorLoans, payments, id]);
 
   const overdueInfo = useMemo(() => {
-    if (!loan) return null;
-    return getLoanOverdueInfo(loan, payments);
-  }, [loan, payments]);
+    if (!activeLoan) return null;
+    return getLoanOverdueInfo(activeLoan, payments);
+  }, [activeLoan, payments]);
 
   async function handleCancelPayment() {
-    if (!cancelPaymentId || !loan || !debtor) return;
+    if (!cancelPaymentId || !debtor) return;
     if (!cancelReason.trim()) {
       showToast("กรุณากรอกเหตุผลการยกเลิก", "warning");
       return;
@@ -64,6 +62,9 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       const paymentToCancel = payments.find((p) => p.id === cancelPaymentId);
       if (!paymentToCancel) return;
 
+      const targetLoan = loans.find((l) => l.id === paymentToCancel.loan_id);
+      if (!targetLoan) return;
+
       // Update payment status
       const { error: payErr } = await supabase
         .from("payments")
@@ -73,17 +74,18 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       if (payErr) throw payErr;
 
       // Recalculate remaining principal for the loan
-      const otherActivePays = loanPayments.filter((p) => p.id !== cancelPaymentId && p.status !== "cancelled");
+      const targetLoanPayments = payments.filter((p) => p.loan_id === targetLoan.id);
+      const otherActivePays = targetLoanPayments.filter((p) => p.id !== cancelPaymentId && p.status !== "cancelled");
       const totalPrincipalPaid = otherActivePays.reduce((sum, p) => sum + p.principal_paid, 0);
-      const newRemaining = Math.max(0, loan.principal - totalPrincipalPaid);
+      const newRemaining = Math.max(0, targetLoan.principal - totalPrincipalPaid);
 
       // Re-activate loan and debtor
-      await supabase.from("loans").update({ remaining_principal: newRemaining, status: "active" }).eq("id", loan.id);
+      await supabase.from("loans").update({ remaining_principal: newRemaining, status: "active" }).eq("id", targetLoan.id);
       await supabase.from("debtors").update({ status: "active" }).eq("id", debtor.id);
 
       // Update local state
       setPayments(payments.map((p) => p.id === cancelPaymentId ? { ...p, status: "cancelled", cancel_reason: cancelReason } : p));
-      setLoans(loans.map((l) => l.id === loan.id ? { ...l, remaining_principal: newRemaining, status: "active" } : l));
+      setLoans(loans.map((l) => l.id === targetLoan.id ? { ...l, remaining_principal: newRemaining, status: "active" } : l));
       setDebtors(debtors.map((d) => d.id === debtor.id ? { ...d, status: "active" } : d));
 
       showToast("ยกเลิกรายการชำระเงินสำเร็จ", "success");
@@ -141,12 +143,17 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                 <ShieldAlert className="w-3 h-3" /> เกินกำหนด {overdueInfo.overduePeriods} วัน
               </span>
             )}
+            {debtor.referred_by && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                แนะนำโดย: {debtor.referred_by}
+              </span>
+            )}
           </div>
 
           {/* Key values */}
           <div className="w-full grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/[0.06] text-center">
             <div>
-              <p className="text-white/30 text-[10px]">เงินต้นคงเหลือ</p>
+              <p className="text-white/30 text-[10px]">เงินต้นคงเหลือรวม</p>
               <p className="text-white font-bold text-sm">{formatCurrency(stats.remaining)}</p>
             </div>
             <div>
@@ -163,61 +170,80 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
         {/* Tab switch */}
         <div className="flex border-b border-white/[0.06]">
           <button onClick={() => setActiveTab("info")} className={cn("tab-btn flex-1 flex items-center justify-center gap-2", activeTab === "info" && "active")}>
-            <FileText className="w-4 h-4" /> ข้อมูลกู้ยืม
+            <FileText className="w-4 h-4" /> สัญญากู้ทั้งหมด ({debtorLoans.length})
           </button>
           <button onClick={() => setActiveTab("history")} className={cn("tab-btn flex-1 flex items-center justify-center gap-2", activeTab === "history" && "active")}>
-            <History className="w-4 h-4" /> ประวัติชำระ
+            <History className="w-4 h-4" /> ประวัติชำระเงิน
           </button>
         </div>
 
         {/* Tab contents */}
         {activeTab === "info" && (
-          <div className="glass-card p-4 space-y-4">
-            {loan ? (
-              <div className="space-y-3">
-                <p className="section-heading">เงื่อนไขสัญญา</p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-white/40 block text-xs">เงินกู้ทั้งหมด</span>
-                    <span className="text-white font-medium">{formatCurrency(loan.principal)}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-xs">ดอกเบี้ย/งวด</span>
-                    <span className="text-white font-medium">{formatCurrency(loan.interest_per_period)}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-xs">หักค้ำประกัน/งวด</span>
-                    <span className="text-white font-medium">{formatCurrency(loan.guarantee_deduction ?? 0)}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-xs">ดอกเบี้ยจริง/งวด</span>
-                    <span className="text-emerald-400 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-xs">ความถี่ชำระเงิน</span>
-                    <span className="text-white font-medium">{loan.payment_frequency === "daily" ? "รายวัน" : "รายสัปดาห์"}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-xs">จำนวนงวดขั้นต่ำ</span>
-                    <span className="text-white font-medium">{loan.minimum_periods} งวด</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-xs">วันที่เริ่มกู้</span>
-                    <span className="text-white font-medium">{formatThaiDate(loan.loan_date)}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-xs">ผู้ให้กู้ (นายทุน)</span>
-                    <span className="text-white font-medium">{loanLender ? loanLender.name : "ไม่มีรายชื่อผู้กู้"}</span>
-                  </div>
-                </div>
+          <div className="space-y-4">
+            {debtorLoans.length === 0 ? (
+              <div className="glass-card p-8 text-center text-white/30 text-sm">
+                ยังไม่มีสัญญากู้ยืม
               </div>
             ) : (
-              <p className="text-sm text-white/30 text-center py-4">ไม่มีข้อมูลเงินกู้ที่กู้อยู่</p>
+              debtorLoans.map((l, index) => {
+                const lender = l.lender_id ? lenders.find((len) => len.id === l.lender_id) : null;
+                return (
+                  <div key={l.id} className="glass-card p-4 space-y-3 border border-white/[0.05] relative overflow-hidden">
+                    <div className="flex justify-between items-center border-b border-white/[0.04] pb-2">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-violet-500"></span>
+                        บิล #{debtorLoans.length - index} (กู้ {formatCurrency(l.principal)})
+                      </h3>
+                      <span className={l.status === "active" ? "text-emerald-400 font-bold text-xs" : "text-white/30 text-xs"}>
+                        {l.status === "active" ? "กำลังผ่อน" : "ปิดสัญญาแล้ว"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-white/40 block">ต้นคงเหลือ</span>
+                        <span className="text-white font-semibold text-sm">{formatCurrency(l.remaining_principal)}</span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 block">ดอกจริง/งวด</span>
+                        <span className="text-emerald-400 font-bold text-sm">
+                          {formatCurrency(Math.max(0, l.interest_per_period - (l.guarantee_deduction ?? 0)))}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 block">ความถี่การผ่อน</span>
+                        <span className="text-white font-medium">
+                          {l.payment_frequency === "daily" ? "รายวัน" : l.payment_frequency === "weekly" ? "รายสัปดาห์" : "รายเดือน"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 block">วันที่เริ่มกู้</span>
+                        <span className="text-white font-medium">{formatThaiDate(l.loan_date)}</span>
+                      </div>
+                      {lender && (
+                        <div className="col-span-2 pt-1">
+                          <span className="text-white/40 block">นายทุนที่ดูแลบิลนี้</span>
+                          <span className="text-violet-300 font-bold">{lender.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {l.status === "active" && (
+                      <button
+                        onClick={() => setPaymentLoanId(l.id)}
+                        className="btn-primary w-full py-2 text-xs font-bold mt-2 text-center"
+                      >
+                        รับชำระเงินบิลนี้
+                      </button>
+                    )}
+                  </div>
+                );
+              })
             )}
 
             {/* Debtor details */}
-            <div className="space-y-3 pt-2">
-              <p className="section-heading">ข้อมูลเพิ่มเติม</p>
+            <div className="glass-card p-4 space-y-3">
+              <p className="section-heading">ข้อมูลเพิ่มเติมของลูกหนี้</p>
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-white/40 block text-xs">ที่อยู่</span>
@@ -237,75 +263,78 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                 </div>
               </div>
             </div>
-
-            {/* Quick Actions */}
-            {loan && loan.status === "active" && (
-              <button
-                onClick={() => setPaymentLoanId(loan.id)}
-                className="btn-primary w-full text-center"
-              >
-                รับชำระเงินงวดใหม่
-              </button>
-            )}
           </div>
         )}
 
         {activeTab === "history" && (
           <div className="space-y-3">
-            {loanPayments.length === 0 ? (
+            {payments.filter((p) => p.debtor_id === id).length === 0 ? (
               <div className="glass-card p-8 text-center text-white/30 text-sm">
                 ไม่มีประวัติการชำระเงินสำหรับเงินกู้นี้
               </div>
             ) : (
-              loanPayments.map((p) => (
-                <div
-                  key={p.id}
-                  className={cn(
-                    "glass-card p-3 relative overflow-hidden",
-                    p.status === "cancelled" && "opacity-50"
-                  )}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-white font-semibold text-base">{formatCurrency(p.amount)}</p>
-                      <p className="text-white/40 text-xs mt-0.5">{formatThaiDateTime(p.payment_date)}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {p.payment_method === "transfer" && p.slip_image_url && (
-                        <button
-                          onClick={() => setSelectedSlipUrl(p.slip_image_url)}
-                          className="p-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
-                        >
-                          <ImageIcon className="w-4 h-4 text-white/60" />
-                        </button>
+              payments
+                .filter((p) => p.debtor_id === id)
+                .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+                .map((p) => {
+                  const targetLoan = loans.find((l) => l.id === p.loan_id);
+                  const billLabel = targetLoan ? ` (บิล ฿${targetLoan.principal})` : "";
+                  return (
+                    <div
+                      key={p.id}
+                      className={cn(
+                        "glass-card p-3 relative overflow-hidden",
+                        p.status === "cancelled" && "opacity-50"
                       )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-white font-semibold text-base">
+                            {formatCurrency(p.amount)}
+                            <span className="text-xs font-bold text-violet-400 ml-1.5">{billLabel}</span>
+                          </p>
+                          <p className="text-white/40 text-xs mt-0.5">{formatThaiDateTime(p.payment_date)}</p>
+                        </div>
 
-                      {p.status === "active" && (
-                        <button
-                          onClick={() => setCancelPaymentId(p.id)}
-                          className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 transition-colors text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {p.payment_method === "transfer" && p.slip_image_url && (
+                            <button
+                              onClick={() => setSelectedSlipUrl(p.slip_image_url)}
+                              className="p-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
+                            >
+                              <ImageIcon className="w-4 h-4 text-white/60" />
+                            </button>
+                          )}
+
+                          {p.status === "active" && (
+                            <button
+                              onClick={() => setCancelPaymentId(p.id)}
+                              className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 transition-colors text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-2.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-white/50">
+                        <span>หักต้น: {formatCurrency(p.principal_paid)}</span>
+                        {p.principal_discount ? (
+                          <span className="text-emerald-400">ลดต้นพิเศษ: {formatCurrency(p.principal_discount)}</span>
+                        ) : null}
+                        <span>หักดอก: {formatCurrency(p.interest_paid)}</span>
+                        <span>คงเหลือ: {formatCurrency(p.remaining_principal)}</span>
+                      </div>
+
+                      {p.status === "cancelled" && (
+                        <div className="mt-2 bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-red-400 text-[10px]">
+                          <span className="font-semibold block">ยกเลิกแล้ว</span>
+                          <span>เหตุผล: {p.cancel_reason}</span>
+                        </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="mt-2.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-white/50">
-                    <span>หักต้น: {formatCurrency(p.principal_paid)}</span>
-                    <span>หักดอก: {formatCurrency(p.interest_paid)}</span>
-                    <span>คงเหลือ: {formatCurrency(p.remaining_principal)}</span>
-                  </div>
-
-                  {p.status === "cancelled" && (
-                    <div className="mt-2 bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-red-400 text-[10px]">
-                      <span className="font-semibold block">ยกเลิกแล้ว</span>
-                      <span>เหตุผล: {p.cancel_reason}</span>
-                    </div>
-                  )}
-                </div>
-              ))
+                  );
+                })
             )}
           </div>
         )}
@@ -361,7 +390,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       {showEditDebtor && (
         <EditDebtorSheet
           debtor={debtor}
-          loan={loan}
+          loan={activeLoan}
           onClose={() => setShowEditDebtor(false)}
         />
       )}

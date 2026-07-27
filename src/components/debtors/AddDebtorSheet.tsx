@@ -22,6 +22,7 @@ const schema = z.object({
   note: z.string().optional(),
   profile_image_url: z.string().optional(),
   lender_id: z.string().optional(),
+  referred_by: z.string().optional(),
   loan_date: z.string().min(1, "กรุณาเลือกวันที่"),
   payment_frequency: z.enum(["daily", "weekly", "monthly"]),
   principal: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
@@ -58,6 +59,7 @@ export function AddDebtorSheet({ onClose }: Props) {
       guarantee_deduction: 0,
       minimum_periods: settings?.default_minimum_days ?? 5,
       principal: 0,
+      referred_by: "",
     },
   });
 
@@ -79,6 +81,7 @@ export function AddDebtorSheet({ onClose }: Props) {
           note: data.note || "",
           status: "active",
           profile_image_url: selectedAvatar || data.profile_image_url || "",
+          referred_by: data.referred_by || "",
         })
         .select()
         .single();
@@ -175,6 +178,11 @@ export function AddDebtorSheet({ onClose }: Props) {
               <label className="input-label">เบอร์โทรศัพท์ *</label>
               <input {...register("phone")} className="input-field" placeholder="0812345678" type="tel" />
               {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone.message}</p>}
+            </div>
+
+            <div>
+              <label className="input-label">ผู้แนะนำ (ถ้ามี)</label>
+              <input {...register("referred_by")} className="input-field" placeholder="ชื่อผู้แนะนำ..." />
             </div>
           </div>
 

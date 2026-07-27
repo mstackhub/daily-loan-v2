@@ -152,6 +152,7 @@ export default function DebtorsPage() {
           </div>
         ) : (
           filteredDebtors.map((debtor) => {
+            const activeLoans = loans.filter((l) => l.debtor_id === debtor.id && l.status === "active");
             const loan = getActiveLoan(debtor.id);
             const overdueInfo = loan ? getLoanOverdueInfo(loan, payments) : null;
             const isOverdue = overdueInfo?.isOverdue ?? false;
@@ -183,15 +184,15 @@ export default function DebtorsPage() {
                       </div>
                     </div>
 
-                    {loan ? (
+                    {activeLoans.length > 0 ? (
                       <div className="pt-2.5 border-t border-slate-100/80 space-y-1 text-xs">
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-400">ค้างต้น</span>
-                          <span className="text-slate-700 font-bold">{formatCurrency(loan.remaining_principal)}</span>
+                          <span className="text-slate-400">ค้างต้นรวม</span>
+                          <span className="text-slate-700 font-bold">{formatCurrency(activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0))}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-400">ผู้ให้กู้</span>
-                          <span className="text-slate-600 font-medium truncate max-w-[80px]">{lenderName}</span>
+                          <span className="text-slate-400">สัญญาค้าง</span>
+                          <span className="text-slate-600 font-medium truncate max-w-[80px]">{activeLoans.length} บิล</span>
                         </div>
                       </div>
                     ) : (
@@ -204,6 +205,9 @@ export default function DebtorsPage() {
                 </Link>
               );
             }
+
+            const activeLoansForThisDebtor = loans.filter((l) => l.debtor_id === debtor.id && l.status === "active");
+            const totalRemainingPrincipal = activeLoansForThisDebtor.reduce((sum, l) => sum + l.remaining_principal, 0);
 
             return (
               <div
@@ -233,9 +237,9 @@ export default function DebtorsPage() {
                         </span>
                       )}
                     </div>
-                    {loan ? (
+                    {activeLoansForThisDebtor.length > 0 ? (
                       <p className="text-slate-400 text-xs mt-1">
-                        ต้น <span className="text-slate-600 font-semibold">{formatCurrency(loan.remaining_principal)}</span> | ดอกจริง <span className="text-violet-600 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
+                        กู้อยู่ <span className="text-slate-700 font-semibold">{activeLoansForThisDebtor.length} บิล</span> | ค้างต้นรวม <span className="text-violet-600 font-bold">{formatCurrency(totalRemainingPrincipal)}</span>
                       </p>
                     ) : (
                       <p className="text-slate-400 text-xs mt-1">{formatPhone(debtor.phone)}</p>

@@ -222,12 +222,19 @@ export function DailyReport({ onReceivePayment }: Props) {
             </p>
           </div>
         ) : (
-          displayItems.map(({ loan, debtor, overdueInfo, paidToday }) => (
-            <div key={loan.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-slate-50/40 transition-colors">
-              <Link href={`/debtors/${debtor.id}`} className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                <DebtorAvatar debtor={debtor} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-800 text-sm font-bold truncate">{debtor.full_name}</p>
+          displayItems.map(({ loan, debtor, overdueInfo, paidToday }) => {
+            const activeLoansForThisDebtor = loans
+              .filter((l) => l.debtor_id === debtor.id && l.status === "active")
+              .sort((a, b) => new Date(a.loan_date).getTime() - new Date(b.loan_date).getTime());
+            const billIndex = activeLoansForThisDebtor.findIndex((l) => l.id === loan.id) + 1;
+            const billLabel = activeLoansForThisDebtor.length > 1 ? ` (บิล #${billIndex} - ฿${loan.principal})` : "";
+
+            return (
+              <div key={loan.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-slate-50/40 transition-colors">
+                <Link href={`/debtors/${debtor.id}`} className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                  <DebtorAvatar debtor={debtor} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-800 text-sm font-bold truncate">{debtor.full_name}{billLabel}</p>
                   <p className="text-slate-400 text-xs mt-0.5">
                     ค้างต้น {formatCurrency(loan.remaining_principal)} | ดอกจริง <span className="text-violet-600 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
                   </p>
@@ -252,7 +259,8 @@ export function DailyReport({ onReceivePayment }: Props) {
                 </button>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

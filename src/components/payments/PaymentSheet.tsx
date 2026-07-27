@@ -22,6 +22,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
   const loanPayments = payments.filter((p) => p.loan_id === loanId);
 
   const [amount, setAmount] = useState("");
+  const [discount, setDiscount] = useState("");
   const [method, setMethod] = useState<"cash" | "transfer">("cash");
   const [selectedBankId, setSelectedBankId] = useState(bankAccounts[0]?.id || "");
   const [slipFile, setSlipFile] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
@@ -29,11 +30,19 @@ export function PaymentSheet({ loanId, onClose }: Props) {
   const [paymentDate] = useState(currentReportDate);
 
   const numAmount = parseFloat(amount) || 0;
+  const numDiscount = parseFloat(discount) || 0;
 
   const preview = useMemo(() => {
     if (!loan) return null;
-    return calculatePaymentPreview(loan, loanPayments, numAmount);
-  }, [loan, loanPayments, numAmount]);
+    const p = calculatePaymentPreview(loan, loanPayments, numAmount);
+    if (p) {
+      p.newRemainingPrincipal = Math.max(0, p.newRemainingPrincipal - numDiscount);
+      if (p.newRemainingPrincipal === 0) {
+        p.isPayoff = true;
+      }
+    }
+    return p;
+  }, [loan, loanPayments, numAmount, numDiscount]);
 
   const selectedBank = bankAccounts.find((b) => b.id === selectedBankId);
   const promptpayId = settings?.promptpay_id || "";
@@ -96,6 +105,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
           payment_method: method,
           slip_image_url: slipImageUrl,
           status: "active",
+          principal_discount: numDiscount,
         })
         .select()
         .single();
@@ -187,6 +197,19 @@ export function PaymentSheet({ loanId, onClose }: Props) {
               className="input-field text-xl font-bold"
               placeholder="0"
             />
+          </div>
+
+          {/* Discount input */}
+          <div>
+            <label className="input-label">ส่วนลดเงินต้นลดต้นพิเศษ (บาท)</label>
+            <input
+              type="number"
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+              className="input-field"
+              placeholder="0"
+            />
+            <p className="text-[10px] text-white/40 mt-1">ใช้ลดเงินต้นโดยไม่ต้องเก็บเงินสดเพิ่ม (เช่น แนะนำเพื่อนหรือทำยอดผ่อนชำระดี)</p>
           </div>
 
           {/* Preview */}

@@ -21,6 +21,7 @@ const schema = z.object({
   note: z.string().optional(),
   profile_image_url: z.string().optional(),
   lender_id: z.string().optional(),
+  referred_by: z.string().optional(),
   guarantee_deduction: z.number({ message: "กรุณากรอกตัวเลข" }).min(0).optional(),
 });
 
@@ -53,6 +54,7 @@ export function EditDebtorSheet({ debtor, loan, onClose }: Props) {
       profile_image_url: debtor.profile_image_url || "",
       lender_id: loan?.lender_id || "",
       guarantee_deduction: loan?.guarantee_deduction || 0,
+      referred_by: debtor.referred_by || "",
     },
   });
 
@@ -74,6 +76,7 @@ export function EditDebtorSheet({ debtor, loan, onClose }: Props) {
           line_id: data.line_id || "",
           note: data.note || "",
           profile_image_url: selectedAvatar || data.profile_image_url || "",
+          referred_by: data.referred_by || "",
         })
         .eq("id", debtor.id)
         .select()
@@ -167,6 +170,11 @@ export function EditDebtorSheet({ debtor, loan, onClose }: Props) {
               <label className="input-label">เบอร์โทรศัพท์ *</label>
               <input {...register("phone")} className="input-field" type="tel" />
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+            </div>
+
+            <div>
+              <label className="input-label">ผู้แนะนำ (ถ้ามี)</label>
+              <input {...register("referred_by")} className="input-field" placeholder="ชื่อผู้แนะนำ..." />
             </div>
 
             {lenders.length > 0 && (

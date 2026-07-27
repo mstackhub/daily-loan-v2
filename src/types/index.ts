@@ -44,6 +44,7 @@ export interface Debtor {
   house_reg_image_url: string;
   house_image_url: string;
   profile_image_url: string;
+  referred_by?: string;
   created_at: string;
   updated_at: string;
   // Relations (joined)
@@ -92,6 +93,7 @@ export interface Payment {
   slip_image_url: string;
   status: PaymentStatus;
   cancel_reason: string;
+  principal_discount?: number;
   created_at: string;
   // Relations
   debtor?: Debtor;
