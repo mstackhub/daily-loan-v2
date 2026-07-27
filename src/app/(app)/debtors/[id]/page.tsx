@@ -178,6 +178,10 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                     <span className="text-white/40 block text-xs">จำนวนงวดขั้นต่ำ</span>
                     <span className="text-white font-medium">{loan.minimum_periods} งวด</span>
                   </div>
+                  <div>
+                    <span className="text-white/40 block text-xs">วันที่เริ่มกู้</span>
+                    <span className="text-white font-medium">{formatThaiDate(loan.loan_date)}</span>
+                  </div>
                 </div>
               </div>
             ) : (
