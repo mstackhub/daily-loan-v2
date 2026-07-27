@@ -106,26 +106,36 @@ export default function DebtorsPage() {
               return (
                 <Link href={`/debtors/${debtor.id}`} key={debtor.id}>
                   <div className={cn(
-                    "glass-card p-3 space-y-3 active:scale-[0.98] transition-transform",
-                    isOverdue && "border-red-500/30"
+                    "glass-card p-4 space-y-3.5 hover:shadow-md active:scale-[0.98] transition-all rounded-2xl border border-slate-200/50 flex flex-col items-center text-center relative",
+                    isOverdue && "border-red-200 bg-red-50/20"
                   )}>
-                    <div className="flex items-center gap-2">
-                      <DebtorAvatar debtor={debtor} size="md" />
-                      <div className="min-w-0">
-                        <p className="text-white text-sm font-semibold truncate">{debtor.full_name}</p>
+                    <DebtorAvatar debtor={debtor} size="md" className="border-2 border-primary-500/10 shadow-sm" />
+                    
+                    <div className="min-w-0 w-full">
+                      <p className="text-slate-800 font-bold text-sm truncate">{debtor.full_name}</p>
+                      
+                      <div className="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
                         <span className={debtor.status === "active" ? "badge-active" : "badge-closed"}>
                           {debtor.status === "active" ? "กู้อยู่" : "ปิดยอด"}
                         </span>
+                        {isOverdue && (
+                          <span className="badge-overdue flex-shrink-0 text-[9px] px-1.5 py-0.5">
+                            เกินกำหนด {overdueInfo!.overduePeriods} วัน
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {loan && (
-                      <div>
-                        <p className="text-white/40 text-xs">ค้างต้น</p>
-                        <p className="text-white font-semibold text-sm">{formatCurrency(loan.remaining_principal)}</p>
+
+                    {loan ? (
+                      <div className="w-full pt-3 border-t border-slate-100/80 flex justify-between items-center text-xs">
+                        <span className="text-slate-400 font-medium">ค้างต้น</span>
+                        <span className="text-slate-700 font-bold">{formatCurrency(loan.remaining_principal)}</span>
                       </div>
-                    )}
-                    {isOverdue && (
-                      <span className="badge-overdue">เกิน {overdueInfo!.overduePeriods} วัน</span>
+                    ) : (
+                      <div className="w-full pt-3 border-t border-slate-100/80 flex justify-between items-center text-xs">
+                        <span className="text-slate-400 font-medium">เบอร์โทร</span>
+                        <span className="text-slate-600 font-semibold">{formatPhone(debtor.phone)}</span>
+                      </div>
                     )}
                   </div>
                 </Link>
