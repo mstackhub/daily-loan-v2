@@ -235,7 +235,7 @@ export default function DebtorsPage() {
                     </div>
                     {loan ? (
                       <p className="text-slate-400 text-xs mt-1">
-                        ต้น <span className="text-slate-600 font-semibold">{formatCurrency(loan.remaining_principal)}</span> | ดอก <span className="text-slate-600 font-semibold">{formatCurrency(loan.interest_per_period)}</span>
+                        ต้น <span className="text-slate-600 font-semibold">{formatCurrency(loan.remaining_principal)}</span> | ดอกจริง <span className="text-violet-600 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
                       </p>
                     ) : (
                       <p className="text-slate-400 text-xs mt-1">{formatPhone(debtor.phone)}</p>
