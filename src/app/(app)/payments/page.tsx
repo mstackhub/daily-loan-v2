@@ -64,7 +64,7 @@ export default function PaymentsPage() {
   }, [activeTab, unpaidItems, paidItems, reportItems]);
 
   return (
-    <div className="min-h-dvh bg-slate-50/30">
+    <div>
       {/* Header & Dashboard Stats */}
       <div className="px-4 pt-12 pb-4 bg-white border-b border-slate-100 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-800 mb-4">สรุปยอดเก็บเงินวันนี้</h1>

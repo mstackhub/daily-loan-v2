@@ -165,7 +165,7 @@ export default function DashboardPage() {
   }, [endDate]);
 
   return (
-    <div className="min-h-dvh bg-slate-50/20">
+    <div>
       {/* Header */}
       <div className="px-4 pt-12 pb-4 bg-white border-b border-slate-100/80 shadow-sm flex flex-col gap-3">
         <div>
