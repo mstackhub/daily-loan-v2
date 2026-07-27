@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main content */}
-      <main className="pb-28">
+      <main className="pb-20">
         {children}
       </main>
 

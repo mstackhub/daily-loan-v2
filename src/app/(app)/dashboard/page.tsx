@@ -222,7 +222,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="px-4 space-y-4 py-5 pb-28">
+      <div className="px-4 space-y-4 py-5 pb-4">
         {/* Stat Cards */}
         <StatCards stats={stats} />
 
