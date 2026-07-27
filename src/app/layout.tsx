@@ -34,12 +34,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className="dark">
+    <html lang="th" className="light">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
       </head>
       <body
-        className={`${inter.variable} ${notoSansThai.variable} font-sans bg-dark-900 text-white antialiased`}
+        className={`${inter.variable} ${notoSansThai.variable} font-sans bg-slate-50 text-slate-800 antialiased`}
       >
         <Providers>{children}</Providers>
       </body>
