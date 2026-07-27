@@ -83,20 +83,45 @@ export default function DebtorsPage() {
 
         {/* Lender Filter */}
         <div className="mb-4">
-          <label className="text-[10px] text-slate-400 block mb-1 font-bold">กรองตามผู้ให้กู้ (นายทุน)</label>
-          <select
-            value={selectedLenderId}
-            onChange={(e) => setSelectedLenderId(e.target.value)}
-            className="input-field py-2 text-xs bg-slate-50 border border-slate-200/50 text-slate-800 rounded-xl"
-          >
-            <option value="all" className="bg-dark-800 text-white">-- ผู้ให้กู้ทั้งหมด --</option>
-            <option value="none" className="bg-dark-800 text-white">ไม่มีรายชื่อผู้กู้</option>
+          <label className="text-[10px] text-slate-400 block mb-1.5 font-bold">กรองตามผู้ให้กู้ (นายทุน)</label>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 no-scrollbar">
+            <button
+              onClick={() => setSelectedLenderId("all")}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 flex-shrink-0",
+                selectedLenderId === "all"
+                  ? "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-500/20"
+                  : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              ทั้งหมด
+            </button>
+            <button
+              onClick={() => setSelectedLenderId("none")}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 flex-shrink-0",
+                selectedLenderId === "none"
+                  ? "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-500/20"
+                  : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              ไม่มีรายชื่อผู้กู้
+            </button>
             {lenders.map((l) => (
-              <option key={l.id} value={l.id} className="bg-dark-800 text-white">
+              <button
+                key={l.id}
+                onClick={() => setSelectedLenderId(l.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 flex-shrink-0",
+                  selectedLenderId === l.id
+                    ? "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-500/20"
+                    : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100"
+                )}
+              >
                 {l.name}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         {/* Tabs + View toggle */}
