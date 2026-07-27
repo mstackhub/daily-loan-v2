@@ -185,15 +185,23 @@ export default function DebtorsPage() {
                   <DebtorAvatar debtor={debtor} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-white text-sm font-semibold truncate">{debtor.full_name}</p>
-                      {isOverdue && <span className="badge-overdue flex-shrink-0">เกินกำหนด {overdueInfo!.overduePeriods} วัน</span>}
+                      <p className="text-slate-800 text-sm font-semibold truncate">{debtor.full_name}</p>
+                      {debtor.status === "closed" ? (
+                        <span className="badge-closed flex-shrink-0 text-[10px] px-2 py-0.5">ปิดยอดแล้ว</span>
+                      ) : (
+                        isOverdue && (
+                          <span className="badge-overdue flex-shrink-0 text-[10px] px-2 py-0.5">
+                            เกินกำหนด {overdueInfo!.overduePeriods} วัน
+                          </span>
+                        )
+                      )}
                     </div>
                     {loan ? (
-                      <p className="text-white/40 text-xs">
+                      <p className="text-slate-500 text-xs mt-0.5">
                         ต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)}
                       </p>
                     ) : (
-                      <p className="text-white/30 text-xs">{formatPhone(debtor.phone)}</p>
+                      <p className="text-slate-400 text-xs mt-0.5">{formatPhone(debtor.phone)}</p>
                     )}
                   </div>
                   <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0" />

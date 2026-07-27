@@ -298,9 +298,17 @@ html:not(.dark) .btn-secondary:hover {
 }
 
 html:not(.dark) .badge-closed {
-  background-color: #f1f5f9 !important;
-  color: #64748b !important;
-  border-color: #e2e8f0 !important;
+  background-color: #f0fdf4 !important;
+  color: #16a34a !important;
+  border-color: #bbf7d0 !important;
+  font-weight: 700 !important;
+}
+
+html:not(.dark) .badge-overdue {
+  background-color: #fef2f2 !important;
+  color: #dc2626 !important;
+  border-color: #fee2e2 !important;
+  font-weight: 700 !important;
 }
 
 html:not(.dark) .badge-cancelled {
