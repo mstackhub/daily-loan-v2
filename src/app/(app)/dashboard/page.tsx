@@ -8,62 +8,107 @@ import { DailyReport } from "@/components/dashboard/DailyReport";
 import { AddDebtorSheet } from "@/components/debtors/AddDebtorSheet";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { Plus } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { debtors, loans, payments, lenders } = useAppStore();
   const [showAddDebtor, setShowAddDebtor] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    return new Date().toISOString().split("T")[0];
-  });
+  const [rangeType, setRangeType] = useState<"today" | "week" | "month" | "custom">("today");
+
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+
+  const startOfWeekStr = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff)).toISOString().split("T")[0];
+  }, []);
+
+  const startOfMonthStr = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split("T")[0];
+  }, []);
+
+  const [customStartDate, setCustomStartDate] = useState(todayStr);
+  const [customEndDate, setCustomEndDate] = useState(todayStr);
+
+  const { startDate, endDate } = useMemo(() => {
+    if (rangeType === "today") return { startDate: todayStr, endDate: todayStr };
+    if (rangeType === "week") return { startDate: startOfWeekStr, endDate: todayStr };
+    if (rangeType === "month") return { startDate: startOfMonthStr, endDate: todayStr };
+    return { startDate: customStartDate, endDate: customEndDate };
+  }, [rangeType, todayStr, startOfWeekStr, startOfMonthStr, customStartDate, customEndDate]);
 
   const stats = useMemo(() => {
-    // 1. Expected collection on selected date
-    const targetToday = loans
-      .filter((l) => l.status === "active" && l.loan_date <= selectedDate)
-      .reduce((sum, l) => sum + Math.max(0, l.interest_per_period - (l.guarantee_deduction ?? 0)), 0);
+    // Helper to generate day strings in range
+    const getDaysArray = (start: string, end: string) => {
+      const arr = [];
+      const dt = new Date(start + "T12:00:00");
+      const endDt = new Date(end + "T12:00:00");
+      while (dt <= endDt) {
+        arr.push(new Date(dt).toISOString().split("T")[0]);
+        dt.setDate(dt.getDate() + 1);
+      }
+      return arr;
+    };
 
-    const monthStr = selectedDate.slice(0, 7);
+    const days = getDaysArray(startDate, endDate);
 
-    // Get last month string relative to selectedDate
-    const currentMonthDate = new Date(selectedDate + "T12:00:00");
+    // 1. Expected collection target in range (calculated day-by-day for accuracy)
+    let targetToday = 0;
+    for (const day of days) {
+      targetToday += loans
+        .filter((l) => l.status === "active" && l.loan_date <= day)
+        .reduce((sum, l) => sum + Math.max(0, l.interest_per_period - (l.guarantee_deduction ?? 0)), 0);
+    }
+
+    // Get last month string relative to endDate
+    const currentMonthDate = new Date(endDate + "T12:00:00");
     currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
     const lastMonthStr = currentMonthDate.toISOString().slice(0, 7);
 
-    // 2. Today collected on selected date
+    // 2. Collected in range (principal + interest)
     const todayCollected = payments
-      .filter((p) => p.status === "active" && p.payment_date.startsWith(selectedDate))
+      .filter((p) => {
+        if (p.status !== "active") return false;
+        const pDate = p.payment_date.split("T")[0];
+        return pDate >= startDate && pDate <= endDate;
+      })
       .reduce((sum, p) => sum + p.amount, 0);
 
-    // 3. Total outstanding principal as of selected date
+    // 3. Total outstanding principal as of endDate
     const totalRemaining = loans
-      .filter((l) => l.loan_date <= selectedDate)
+      .filter((l) => l.loan_date <= endDate)
       .reduce((sum, l) => {
         const paidBeforeDate = payments
-          .filter((p) => p.loan_id === l.id && p.status === "active" && p.payment_date.split("T")[0] <= selectedDate)
+          .filter((p) => p.loan_id === l.id && p.status === "active" && p.payment_date.split("T")[0] <= endDate)
           .reduce((s, p) => s + (p.principal_paid ?? 0), 0);
         return sum + Math.max(0, l.principal - paidBeforeDate);
       }, 0);
 
-    // 4. Total overdue interest as of selected date
+    // 4. Total overdue interest as of endDate
     const totalOverdue = loans
-      .filter((l) => l.loan_date <= selectedDate && l.status === "active")
+      .filter((l) => l.loan_date <= endDate && l.status === "active")
       .reduce((sum, loan) => {
-        const overdueInfo = getLoanOverdueInfo(loan, payments, new Date(selectedDate + "T23:59:59"));
+        const overdueInfo = getLoanOverdueInfo(loan, payments, new Date(endDate + "T23:59:59"));
         return sum + overdueInfo.outstandingInterest;
       }, 0);
 
-    // 5. Month interest collected as of selected date's month
+    // 5. Interest collected in range (Actual profit in range)
     const monthInterestCollected = payments
-      .filter((p) => p.status === "active" && p.payment_date.slice(0, 7) === monthStr)
+      .filter((p) => {
+        if (p.status !== "active") return false;
+        const pDate = p.payment_date.split("T")[0];
+        return pDate >= startDate && pDate <= endDate;
+      })
       .reduce((sum, p) => sum + p.interest_paid, 0);
 
-    // 6. Last month capital lent relative to selectedDate's month
+    // 6. Last month capital lent relative to endDate's month
     const lastMonthLent = loans
       .filter((l) => l.loan_date.slice(0, 7) === lastMonthStr)
       .reduce((sum, l) => sum + l.principal, 0);
 
-    // 7. Last month profit (interest collected) relative to selectedDate's month
+    // 7. Last month profit (interest collected) relative to endDate's month
     const lastMonthInterestCollected = payments
       .filter((p) => p.status === "active" && p.payment_date.slice(0, 7) === lastMonthStr)
       .reduce((sum, p) => sum + p.interest_paid, 0);
@@ -77,18 +122,20 @@ export default function DashboardPage() {
       lastMonthLent,
       lastMonthInterestCollected,
     };
-  }, [loans, payments, selectedDate]);
+  }, [loans, payments, startDate, endDate]);
 
   const lenderStats = useMemo(() => {
     return lenders.map((lender) => {
       const lenderActiveLoans = loans.filter((l) => l.lender_id === lender.id && l.status === "active");
       const outstandingPrincipal = lenderActiveLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
 
-      const todayLenderPayments = payments.filter((p) => {
+      const lenderPaymentsInRange = payments.filter((p) => {
         const loan = loans.find((l) => l.id === p.loan_id);
-        return loan && loan.lender_id === lender.id && p.status === "active" && p.payment_date.startsWith(selectedDate);
+        if (!loan || loan.lender_id !== lender.id || p.status !== "active") return false;
+        const pDate = p.payment_date.split("T")[0];
+        return pDate >= startDate && pDate <= endDate;
       });
-      const interestCollectedToday = todayLenderPayments.reduce((sum, p) => sum + p.interest_paid, 0);
+      const interestCollectedToday = lenderPaymentsInRange.reduce((sum, p) => sum + p.interest_paid, 0);
 
       return {
         id: lender.id,
@@ -97,13 +144,13 @@ export default function DashboardPage() {
         interestCollectedToday,
       };
     });
-  }, [lenders, loans, payments, selectedDate]);
+  }, [lenders, loans, payments, startDate, endDate]);
 
   const lastMonthThaiName = useMemo(() => {
-    const d = new Date(selectedDate + "T12:00:00");
+    const d = new Date(endDate + "T12:00:00");
     d.setMonth(d.getMonth() - 1);
     return d.toLocaleDateString("th-TH", { month: "long", year: "2-digit" });
-  }, [selectedDate]);
+  }, [endDate]);
 
   return (
     <div className="min-h-dvh bg-slate-50/20">
@@ -115,15 +162,51 @@ export default function DashboardPage() {
           <p className="text-slate-400 text-xs mt-0.5">ระบบบริหารลูกหนี้รายวันเวอร์ชันใหม่</p>
         </div>
 
-        {/* Date Selector */}
-        <div className="flex flex-col gap-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">เลือกวันที่เพื่อตรวจสอบข้อมูล</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="input-field py-2 text-sm bg-white font-medium text-slate-800 border-slate-200"
-          />
+        {/* Dynamic Range selector */}
+        <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+          <div className="flex gap-1 bg-slate-200/60 p-0.5 rounded-lg">
+            {(["today", "week", "month", "custom"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setRangeType(t)}
+                className={cn(
+                  "flex-1 py-1 text-[10px] font-bold rounded-md transition-all",
+                  rangeType === t
+                    ? "bg-white text-slate-800 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                {t === "today" ? "วันนี้" : t === "week" ? "สัปดาห์นี้" : t === "month" ? "เดือนนี้" : "กำหนดเอง"}
+              </button>
+            ))}
+          </div>
+
+          {rangeType === "custom" ? (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 block mb-0.5">เริ่มต้น</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="input-field py-1 text-xs bg-white font-medium text-slate-800 border-slate-200"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 block mb-0.5">สิ้นสุด</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="input-field py-1 text-xs bg-white font-medium text-slate-800 border-slate-200"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-[10px] text-slate-500 font-semibold px-1 pt-0.5">
+              ช่วงวันที่ตรวจสอบ: <span className="text-violet-600 font-bold">{startDate}</span> ถึง <span className="text-violet-600 font-bold">{endDate}</span>
+            </div>
+          )}
         </div>
       </div>
 
