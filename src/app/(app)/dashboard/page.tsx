@@ -132,7 +132,7 @@ export default function DashboardPage() {
         <StatCards stats={stats} />
 
         {/* Last Month Summary */}
-        <div className="glass-card p-4.5 space-y-3">
+        <div className="glass-card p-5 space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <span className="text-slate-800 font-bold text-sm">ผลประกอบการเดือนที่แล้ว ({lastMonthThaiName})</span>
             <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2.5 py-0.5 rounded-full border border-indigo-100">ย้อนหลัง 1 เดือน</span>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
 
         {/* Lenders Summary Card */}
         {lenders.length > 0 && (
-          <div className="glass-card p-4.5 space-y-3">
+          <div className="glass-card p-5 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-slate-800 font-bold text-sm">ยอดแยกตามทุน (ประจำวัน)</span>
               <span className="text-[10px] bg-violet-50 text-violet-600 font-bold px-2.5 py-0.5 rounded-full border border-violet-100">ผู้ให้กู้ทั้งหมด</span>
