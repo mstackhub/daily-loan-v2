@@ -8,7 +8,7 @@ import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { Search, AlertTriangle } from "lucide-react";
 
-type FilterLevel = "all" | "3" | "7" | "15";
+type FilterLevel = "all" | "3" | "7";
 
 export default function OverduePage() {
   const { debtors, loans, payments } = useAppStore();
@@ -38,7 +38,6 @@ export default function OverduePage() {
       .filter(({ overdueInfo }) => {
         if (filterLevel === "3") return overdueInfo.overduePeriods > 3;
         if (filterLevel === "7") return overdueInfo.overduePeriods > 7;
-        if (filterLevel === "15") return overdueInfo.overduePeriods > 15;
         return true;
       })
       .filter(({ debtor }) => {
@@ -52,7 +51,6 @@ export default function OverduePage() {
     all: overdueItems.length,
     "3": overdueItems.filter((i) => i.overdueInfo.overduePeriods > 3).length,
     "7": overdueItems.filter((i) => i.overdueInfo.overduePeriods > 7).length,
-    "15": overdueItems.filter((i) => i.overdueInfo.overduePeriods > 15).length,
   };
 
   return (
@@ -82,7 +80,7 @@ export default function OverduePage() {
 
         {/* Filter pills */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {(["all", "3", "7", "15"] as FilterLevel[]).map((level) => (
+          {(["all", "3", "7"] as FilterLevel[]).map((level) => (
             <button
               key={level}
               onClick={() => setFilterLevel(level)}
