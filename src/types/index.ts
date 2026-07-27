@@ -50,9 +50,19 @@ export interface Debtor {
   loans?: Loan[];
 }
 
+export interface Lender {
+  id: string;
+  name: string;
+  phone: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Loan {
   id: string;
   debtor_id: string;
+  lender_id?: string;
   loan_date: string; // "YYYY-MM-DD"
   principal: number;
   remaining_principal: number;
@@ -64,6 +74,7 @@ export interface Loan {
   updated_at: string;
   // Relations
   debtor?: Debtor;
+  lender?: Lender;
   payments?: Payment[];
 }
 
@@ -135,6 +146,7 @@ export interface AddDebtorForm {
   note?: string;
   profile_image_url?: string;
   // Loan fields
+  lender_id?: string;
   loan_date: string;
   payment_frequency: PaymentFrequency;
   principal: number;

@@ -21,6 +21,7 @@ const schema = z.object({
   google_map: z.string().optional(),
   note: z.string().optional(),
   profile_image_url: z.string().optional(),
+  lender_id: z.string().optional(),
   loan_date: z.string().min(1, "กรุณาเลือกวันที่"),
   payment_frequency: z.enum(["daily", "weekly", "monthly"]),
   principal: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
@@ -41,7 +42,7 @@ interface Props {
 }
 
 export function AddDebtorSheet({ onClose }: Props) {
-  const { debtors, setDebtors, loans, setLoans, settings, showToast } = useAppStore();
+  const { debtors, setDebtors, loans, setLoans, lenders, settings, showToast } = useAppStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState("");
@@ -87,6 +88,7 @@ export function AddDebtorSheet({ onClose }: Props) {
         .from("loans")
         .insert({
           debtor_id: debtor.id,
+          lender_id: data.lender_id || null,
           loan_date: data.loan_date,
           principal: data.principal,
           remaining_principal: data.principal,
@@ -176,6 +178,18 @@ export function AddDebtorSheet({ onClose }: Props) {
           {/* Loan fields */}
           <div className="space-y-3">
             <p className="section-heading">ข้อมูลการกู้</p>
+
+            {lenders.length > 0 && (
+              <div>
+                <label className="input-label">ผู้ให้กู้ (นายทุน) *</label>
+                <select {...register("lender_id")} className="input-field">
+                  <option value="" className="bg-dark-800">-- เลือกผู้ให้กู้ --</option>
+                  {lenders.map((l) => (
+                    <option key={l.id} value={l.id} className="bg-dark-800">{l.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="input-label">วันที่เริ่มกู้ *</label>

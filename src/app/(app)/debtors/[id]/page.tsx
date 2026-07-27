@@ -14,7 +14,7 @@ type Tab = "info" | "history" | "docs";
 
 export default function DebtorDetailsPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const { debtors, setDebtors, loans, setLoans, payments, setPayments, showToast } = useAppStore();
+  const { debtors, setDebtors, loans, setLoans, payments, setPayments, lenders, showToast } = useAppStore();
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const [paymentLoanId, setPaymentLoanId] = useState<string | null>(null);
   const [selectedSlipUrl, setSelectedSlipUrl] = useState<string | null>(null);
@@ -25,6 +25,11 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const debtor = debtors.find((d) => d.id === id);
   const loan = loans.find((l) => l.debtor_id === id && l.status === "active")
     ?? loans.filter((l) => l.debtor_id === id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+  const loanLender = useMemo(() => {
+    if (!loan || !loan.lender_id) return null;
+    return lenders.find((l) => l.id === loan.lender_id);
+  }, [loan, lenders]);
 
   const loanPayments = useMemo(() => {
     if (!loan) return [];
@@ -182,6 +187,12 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                     <span className="text-white/40 block text-xs">วันที่เริ่มกู้</span>
                     <span className="text-white font-medium">{formatThaiDate(loan.loan_date)}</span>
                   </div>
+                  {loanLender && (
+                    <div>
+                      <span className="text-white/40 block text-xs">ผู้ให้กู้ (นายทุน)</span>
+                      <span className="text-white font-medium">{loanLender.name}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

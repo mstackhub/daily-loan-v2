@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { Debtor, Loan, Payment, Settings, BankAccount } from "@/types";
+import type { Debtor, Loan, Payment, Settings, BankAccount, Lender } from "@/types";
 
 interface AppStore {
   // Data
@@ -10,6 +10,7 @@ interface AppStore {
   payments: Payment[];
   settings: Settings | null;
   bankAccounts: BankAccount[];
+  lenders: Lender[];
 
   // UI State
   activeDebtorId: string | null;
@@ -23,6 +24,7 @@ interface AppStore {
   setPayments: (p: Payment[]) => void;
   setSettings: (s: Settings) => void;
   setBankAccounts: (b: BankAccount[]) => void;
+  setLenders: (l: Lender[]) => void;
   setActiveDebtorId: (id: string | null) => void;
   setCurrentReportDate: (date: string) => void;
   setIsLoading: (v: boolean) => void;
@@ -36,6 +38,7 @@ export const useAppStore = create<AppStore>((set) => ({
   payments: [],
   settings: null,
   bankAccounts: [],
+  lenders: [],
   activeDebtorId: null,
   currentReportDate: new Date().toISOString().split("T")[0],
   isLoading: false,
@@ -46,6 +49,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setPayments: (payments) => set({ payments }),
   setSettings: (settings) => set({ settings }),
   setBankAccounts: (bankAccounts) => set({ bankAccounts }),
+  setLenders: (lenders) => set({ lenders }),
   setActiveDebtorId: (activeDebtorId) => set({ activeDebtorId }),
   setCurrentReportDate: (currentReportDate) => set({ currentReportDate }),
   setIsLoading: (isLoading) => set({ isLoading }),

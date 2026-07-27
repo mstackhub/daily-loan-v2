@@ -19,7 +19,7 @@ const BANK_OPTIONS = [
 ];
 
 export default function SettingsPage() {
-  const { settings, setSettings, bankAccounts, setBankAccounts, showToast } = useAppStore();
+  const { settings, setSettings, bankAccounts, setBankAccounts, lenders, setLenders, showToast } = useAppStore();
 
   const [pinOld, setPinOld] = useState("");
   const [pinNew, setPinNew] = useState("");
@@ -33,6 +33,13 @@ export default function SettingsPage() {
   const [accNo, setAccNo] = useState("");
   const [accName, setAccName] = useState("");
   const [isAddingAcc, setIsAddingAcc] = useState(false);
+
+  // Lender state
+  const [lenderName, setLenderName] = useState("");
+  const [lenderPhone, setLenderPhone] = useState("");
+  const [lenderNote, setLenderNote] = useState("");
+  const [isAddingLender, setIsAddingLender] = useState(false);
+  const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
 
   async function handleSaveSettings() {
     if (!settings) return;
@@ -130,6 +137,78 @@ export default function SettingsPage() {
     } catch (err: any) {
       showToast("เกิดข้อผิดพลาด: " + err.message, "danger");
     }
+  }
+
+  async function handleAddOrUpdateLender() {
+    if (!lenderName) {
+      showToast("กรุณากรอกชื่อผู้ให้กู้", "warning");
+      return;
+    }
+
+    try {
+      if (editingLenderId) {
+        const { data, error } = await supabase
+          .from("lenders")
+          .update({
+            name: lenderName,
+            phone: lenderPhone,
+            note: lenderNote,
+          })
+          .eq("id", editingLenderId)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setLenders(lenders.map((l) => (l.id === editingLenderId ? data : l)));
+        showToast("แก้ไขข้อมูลผู้ให้กู้สำเร็จ", "success");
+      } else {
+        const { data, error } = await supabase
+          .from("lenders")
+          .insert({
+            name: lenderName,
+            phone: lenderPhone,
+            note: lenderNote,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setLenders([data, ...lenders]);
+        showToast("เพิ่มผู้ให้กู้สำเร็จ", "success");
+      }
+
+      setLenderName("");
+      setLenderPhone("");
+      setLenderNote("");
+      setIsAddingLender(false);
+      setEditingLenderId(null);
+    } catch (err: any) {
+      showToast("เกิดข้อผิดพลาด: " + err.message, "danger");
+    }
+  }
+
+  async function handleDeleteLender(id: string) {
+    if (!confirm("คุณต้องการลบรายชื่อผู้ให้กู้รายนี้ใช่หรือไม่?")) return;
+
+    try {
+      const { error } = await supabase.from("lenders").delete().eq("id", id);
+      if (error) throw error;
+
+      setLenders(lenders.filter((l) => l.id !== id));
+      showToast("ลบรายชื่อผู้ให้กู้สำเร็จ", "success");
+    } catch (err: any) {
+      showToast("เกิดข้อผิดพลาด: " + err.message, "danger");
+    }
+  }
+
+  function startEditLender(lender: any) {
+    setEditingLenderId(lender.id);
+    setLenderName(lender.name);
+    setLenderPhone(lender.phone);
+    setLenderNote(lender.note);
+    setIsAddingLender(true);
   }
 
   return (
@@ -282,6 +361,113 @@ export default function SettingsPage() {
               </button>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Lenders configuration */}
+      <div className="glass-card p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="section-heading mb-0">รายชื่อผู้ให้กู้ (นายทุน)</p>
+          {!isAddingLender && (
+            <button
+              onClick={() => {
+                setEditingLenderId(null);
+                setLenderName("");
+                setLenderPhone("");
+                setLenderNote("");
+                setIsAddingLender(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-primary rounded-xl text-xs font-bold text-white shadow-glow-primary active:scale-95 transition-transform"
+            >
+              <Plus className="w-3.5 h-3.5" /> เพิ่มผู้ให้กู้
+            </button>
+          )}
+        </div>
+
+        {isAddingLender && (
+          <div className="p-3 bg-slate-50 border border-slate-200/50 rounded-2xl space-y-3">
+            <p className="text-xs font-bold text-slate-800">
+              {editingLenderId ? "แก้ไขข้อมูลผู้ให้กู้" : "กรอกข้อมูลผู้ให้กู้ใหม่"}
+            </p>
+
+            <div>
+              <label className="input-label text-[10px]">ชื่อ-นามสกุล *</label>
+              <input
+                type="text"
+                value={lenderName}
+                onChange={(e) => setLenderName(e.target.value)}
+                className="input-field py-2 text-xs"
+                placeholder="ชื่อนายทุน..."
+              />
+            </div>
+
+            <div>
+              <label className="input-label text-[10px]">เบอร์โทรศัพท์</label>
+              <input
+                type="text"
+                value={lenderPhone}
+                onChange={(e) => setLenderPhone(e.target.value)}
+                className="input-field py-2 text-xs"
+                placeholder="08xxxxxxxx"
+              />
+            </div>
+
+            <div>
+              <label className="input-label text-[10px]">หมายเหตุเพิ่มเติม</label>
+              <input
+                type="text"
+                value={lenderNote}
+                onChange={(e) => setLenderNote(e.target.value)}
+                className="input-field py-2 text-xs"
+                placeholder="หมายเหตุ..."
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setIsAddingLender(false);
+                  setEditingLenderId(null);
+                }}
+                className="btn-secondary flex-1 py-2 text-xs"
+              >
+                ยกเลิก
+              </button>
+              <button onClick={handleAddOrUpdateLender} className="btn-primary flex-1 py-2 text-xs">
+                บันทึกข้อมูล
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {lenders.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-2">ยังไม่มีข้อมูลรายชื่อผู้ให้กู้</p>
+          ) : (
+            lenders.map((l) => (
+              <div
+                key={l.id}
+                onClick={() => startEditLender(l)}
+                className="flex items-center justify-between p-3 glass-card-sm cursor-pointer hover:bg-slate-50/50 transition-colors"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-slate-800 font-bold text-xs">{l.name}</p>
+                  <p className="text-slate-400 text-[10px] mt-0.5">
+                    {l.phone ? `โทร: ${l.phone}` : "ไม่มีเบอร์โทร"} {l.note ? `| ${l.note}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteLender(l.id);
+                  }}
+                  className="p-2 text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
