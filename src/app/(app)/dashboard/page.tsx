@@ -9,6 +9,7 @@ import { AddDebtorSheet } from "@/components/debtors/AddDebtorSheet";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { Plus } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
+import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 
 export default function DashboardPage() {
   const { debtors, loans, payments, lenders } = useAppStore();
@@ -146,6 +147,17 @@ export default function DashboardPage() {
     });
   }, [lenders, loans, payments, startDate, endDate]);
 
+  const recentPayments = useMemo(() => {
+    return payments
+      .filter((p) => p.status === "active")
+      .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+      .slice(0, 5)
+      .map((payment) => {
+        const debtor = debtors.find((d) => d.id === payment.debtor_id);
+        return { payment, debtor };
+      });
+  }, [payments, debtors]);
+
   const lastMonthThaiName = useMemo(() => {
     const d = new Date(endDate + "T12:00:00");
     d.setMonth(d.getMonth() - 1);
@@ -210,7 +222,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="px-4 space-y-4 py-5 pb-24">
+      <div className="px-4 space-y-4 py-5 pb-28">
         {/* Stat Cards */}
         <StatCards stats={stats} />
 
@@ -255,6 +267,43 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Recent Payments Activity */}
+        <div className="glass-card p-5 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <span className="text-slate-800 font-bold text-sm">ประวัติการรับเงินล่าสุด</span>
+            <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-100">ล่าสุด 5 รายการ</span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {recentPayments.length === 0 ? (
+              <p className="text-slate-400 text-xs py-4 text-center">ยังไม่มีประวัติการรับชำระเงิน</p>
+            ) : (
+              recentPayments.map(({ payment, debtor }) => {
+                if (!debtor) return null;
+                const payTime = new Date(payment.payment_date).toLocaleTimeString("th-TH", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                const payDate = new Date(payment.payment_date).toLocaleDateString("th-TH", {
+                  day: "numeric",
+                  month: "short",
+                });
+                return (
+                  <div key={payment.id} className="flex justify-between items-center py-2.5 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <DebtorAvatar debtor={debtor} size="sm" />
+                      <div>
+                        <span className="text-slate-800 font-bold block">{debtor.full_name}</span>
+                        <span className="text-slate-400 text-[10px]">{payDate} • {payTime} น.</span>
+                      </div>
+                    </div>
+                    <span className="text-emerald-600 font-extrabold text-sm">+{formatCurrency(payment.amount)}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
       {/* FAB */}
