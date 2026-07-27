@@ -39,7 +39,7 @@ export function getLoanOverdueInfo(
 
   if (overdueAsOf > loanStart) {
     const diffMs = overdueAsOf.getTime() - loanStart.getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (freq === "daily") {
       elapsedPeriods = diffDays;
