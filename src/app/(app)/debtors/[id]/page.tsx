@@ -7,8 +7,9 @@ import { formatCurrency, formatPhone, formatThaiDate, formatThaiDateTime, cn } f
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { supabase } from "@/lib/supabase/client";
-import { ChevronLeft, Phone, ShieldAlert, FileText, History, Image as ImageIcon, Trash2, X } from "lucide-react";
+import { ChevronLeft, Phone, ShieldAlert, FileText, History, Image as ImageIcon, Trash2, X, Edit2 } from "lucide-react";
 import Link from "next/link";
+import { EditDebtorSheet } from "@/components/debtors/EditDebtorSheet";
 
 type Tab = "info" | "history" | "docs";
 
@@ -21,6 +22,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showEditDebtor, setShowEditDebtor] = useState(false);
 
   const debtor = debtors.find((d) => d.id === id);
   const loan = loans.find((l) => l.debtor_id === id && l.status === "active")
@@ -115,8 +117,16 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       {/* Main card */}
       <div className="px-4 space-y-4 pb-8">
         <div className="glass-card p-4 flex flex-col items-center text-center relative">
+          {/* Edit Debtor Profile Button */}
+          <button
+            onClick={() => setShowEditDebtor(true)}
+            className="absolute top-4 right-4 p-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 active:scale-95 transition-all border border-slate-200/40"
+          >
+            <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+          </button>
+
           <DebtorAvatar debtor={debtor} size="lg" className="mb-3 border-2 border-primary-500/20" />
-          <h2 className="text-lg font-bold text-white">{debtor.full_name}</h2>
+          <h2 className="text-lg font-bold text-slate-800">{debtor.full_name}</h2>
           <div className="flex items-center gap-1.5 text-white/50 text-xs mt-1">
             <Phone className="w-3.5 h-3.5" />
             <a href={`tel:${debtor.phone}`} className="hover:underline">{formatPhone(debtor.phone)}</a>
@@ -341,6 +351,14 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       )}
 
       {paymentLoanId && <PaymentSheet loanId={paymentLoanId} onClose={() => setPaymentLoanId(null)} />}
+      
+      {showEditDebtor && (
+        <EditDebtorSheet
+          debtor={debtor}
+          loan={loan}
+          onClose={() => setShowEditDebtor(false)}
+        />
+      )}
     </div>
   );
 }
