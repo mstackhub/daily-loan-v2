@@ -6,7 +6,6 @@ import { getLoanOverdueInfo } from "@/lib/business-logic/interest";
 import { formatCurrency, formatPhone, cn } from "@/lib/utils";
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 import { AddDebtorSheet } from "@/components/debtors/AddDebtorSheet";
-import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { Search, Plus, LayoutGrid, List, ChevronRight, Phone } from "lucide-react";
 import Link from "next/link";
 
@@ -19,7 +18,6 @@ export default function DebtorsPage() {
   const [selectedLenderId, setSelectedLenderId] = useState<string>("all");
   const [isGridView, setIsGridView] = useState(false);
   const [showAddDebtor, setShowAddDebtor] = useState(false);
-  const [paymentLoanId, setPaymentLoanId] = useState<string | null>(null);
 
   const filteredDebtors = useMemo(() => {
     return debtors
@@ -245,14 +243,6 @@ export default function DebtorsPage() {
                   </div>
                   <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0" />
                 </Link>
-                {loan && debtor.status === "active" && (
-                  <button
-                    onClick={() => setPaymentLoanId(loan.id)}
-                    className="flex-shrink-0 px-2.5 py-1.5 bg-gradient-primary text-white text-xs font-semibold rounded-lg active:scale-95 transition-transform shadow-glow-primary"
-                  >
-                    รับเงิน
-                  </button>
-                )}
               </div>
             );
           })
@@ -271,7 +261,6 @@ export default function DebtorsPage() {
       </button>
 
       {showAddDebtor && <AddDebtorSheet onClose={() => setShowAddDebtor(false)} />}
-      {paymentLoanId && <PaymentSheet loanId={paymentLoanId} onClose={() => setPaymentLoanId(null)} />}
     </div>
   );
 }

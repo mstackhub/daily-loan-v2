@@ -43,6 +43,20 @@ export default function PaymentsPage() {
   const unpaidItems = reportItems.filter((i) => !i.paidToday);
   const paidItems = reportItems.filter((i) => i.paidToday);
 
+  const totalCollectedToday = useMemo(() => {
+    return payments
+      .filter((p) => p.status === "active" && p.payment_date.startsWith(currentReportDate))
+      .reduce((sum, p) => sum + p.amount, 0);
+  }, [payments, currentReportDate]);
+
+  const totalTargetToday = useMemo(() => {
+    return loans
+      .filter((l) => l.status === "active")
+      .reduce((sum, l) => sum + Math.max(0, l.interest_per_period - (l.guarantee_deduction ?? 0)), 0);
+  }, [loans]);
+
+  const progressPercent = reportItems.length > 0 ? Math.round((paidItems.length / reportItems.length) * 100) : 0;
+
   const displayItems = useMemo(() => {
     if (activeTab === "unpaid") return unpaidItems;
     if (activeTab === "paid") return paidItems;
@@ -50,66 +64,133 @@ export default function PaymentsPage() {
   }, [activeTab, unpaidItems, paidItems, reportItems]);
 
   return (
-    <div className="min-h-dvh">
-      <div className="px-4 pt-12 pb-2">
-        <h1 className="text-2xl font-bold text-white mb-4">รับชำระเงินวันนี้</h1>
+    <div className="min-h-dvh bg-slate-50/30">
+      {/* Header & Dashboard Stats */}
+      <div className="px-4 pt-12 pb-4 bg-white border-b border-slate-100 shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-800 mb-4">สรุปยอดเก็บเงินวันนี้</h1>
+
+        {/* Dashboard Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-gradient-to-br from-violet-500 to-indigo-600 p-3.5 rounded-2xl text-white shadow-md shadow-violet-500/10">
+            <span className="text-[10px] text-white/70 block font-medium">เก็บเงินสำเร็จวันนี้</span>
+            <span className="text-lg font-bold text-white-force block mt-0.5">{formatCurrency(totalCollectedToday)}</span>
+            <span className="text-[9px] text-white/60 block mt-1">เป้าเปรียบเทียบ: {formatCurrency(totalTargetToday)}</span>
+          </div>
+
+          <div className="bg-white border border-slate-200/60 p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] text-slate-400 block font-medium">ความคืบหน้าเก็บเงิน</span>
+              <span className="text-lg font-bold text-slate-800 block mt-0.5">{progressPercent}%</span>
+            </div>
+            <span className="text-[9px] text-slate-500 font-medium mt-1">
+              จ่ายแล้ว {paidItems.length} / {reportItems.length} คน
+            </span>
+          </div>
+        </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/[0.06]">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab("unpaid")}
-            className={cn("tab-btn flex-1", activeTab === "unpaid" && "active")}
+            className={cn(
+              "flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all",
+              activeTab === "unpaid"
+                ? "bg-white text-slate-800 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            )}
           >
             ยังไม่จ่าย ({unpaidItems.length})
           </button>
           <button
             onClick={() => setActiveTab("paid")}
-            className={cn("tab-btn flex-1", activeTab === "paid" && "active")}
+            className={cn(
+              "flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all",
+              activeTab === "paid"
+                ? "bg-white text-slate-800 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            )}
           >
             จ่ายแล้ว ({paidItems.length})
           </button>
           <button
             onClick={() => setActiveTab("all")}
-            className={cn("tab-btn flex-1", activeTab === "all" && "active")}
+            className={cn(
+              "flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all",
+              activeTab === "all"
+                ? "bg-white text-slate-800 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            )}
           >
             ทั้งหมด ({reportItems.length})
           </button>
         </div>
       </div>
 
+      {/* List */}
       <div className="px-4 py-3 space-y-2 pb-8">
         {displayItems.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-white/30 text-sm">ไม่มีข้อมูลในหมวดนี้</p>
+            <p className="text-slate-400 text-sm">ไม่มีข้อมูลในหมวดนี้</p>
           </div>
         ) : (
-          displayItems.map(({ loan, debtor, overdueInfo, paidToday }) => (
-            <div
-              key={loan.id}
-              className="glass-card flex items-center gap-3 p-3"
-            >
-              <DebtorAvatar debtor={debtor} size="sm" />
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-semibold truncate">{debtor.full_name}</p>
-                <p className="text-white/40 text-xs">
-                  ต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)}
-                </p>
-              </div>
-              {paidToday ? (
-                <div className="flex items-center gap-1 text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span className="text-xs font-semibold">จ่ายแล้ว</span>
+          displayItems.map(({ loan, debtor, overdueInfo, paidToday }) => {
+            const todayPayment = payments.find(
+              (p) =>
+                p.loan_id === loan.id &&
+                p.status === "active" &&
+                p.payment_date.startsWith(currentReportDate)
+            );
+            const payTime = todayPayment
+              ? new Date(todayPayment.payment_date).toLocaleTimeString("th-TH", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
+
+            return (
+              <div
+                key={loan.id}
+                className={cn(
+                  "glass-card-sm flex items-center gap-3 p-3.5 hover:bg-slate-50/50 transition-colors",
+                  paidToday && "bg-emerald-50/10 border-emerald-100"
+                )}
+              >
+                <DebtorAvatar debtor={debtor} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-slate-800 text-sm font-semibold truncate">{debtor.full_name}</p>
+                    {overdueInfo.isOverdue && !paidToday && (
+                      <span className="badge-overdue flex-shrink-0 text-[9px] px-1.5 py-0.5">
+                        ค้าง {overdueInfo.overduePeriods} วัน
+                      </span>
+                    )}
+                  </div>
+                  {paidToday && todayPayment ? (
+                    <p className="text-emerald-600 text-xs font-semibold mt-1">
+                      จ่ายแล้วเมื่อ {payTime} น. • {formatCurrency(todayPayment.amount)}
+                    </p>
+                  ) : (
+                    <p className="text-slate-400 text-xs mt-1">
+                      ต้น <span className="text-slate-600 font-semibold">{formatCurrency(loan.remaining_principal)}</span> | ดอกจริง <span className="text-violet-600 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <button
-                  onClick={() => setPaymentLoanId(loan.id)}
-                  className="flex-shrink-0 px-3 py-1.5 bg-gradient-primary text-white text-xs font-semibold rounded-lg active:scale-95 transition-transform shadow-glow-primary"
-                >
-                  รับเงิน
-                </button>
-              )}
-            </div>
-          ))
+                {paidToday ? (
+                  <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-[10px] font-bold">จ่ายแล้ว</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setPaymentLoanId(loan.id)}
+                    className="flex-shrink-0 px-3 py-1.5 bg-gradient-primary text-white text-xs font-semibold rounded-lg active:scale-95 transition-transform shadow-glow-primary"
+                  >
+                    รับเงิน
+                  </button>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
