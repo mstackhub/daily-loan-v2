@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main content */}
-      <main className="relative z-10 pb-safe">
+      <main className="relative z-10 pb-28">
         {children}
       </main>
 
