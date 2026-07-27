@@ -145,7 +145,7 @@ export default function DebtorsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-white text-sm font-semibold truncate">{debtor.full_name}</p>
-                      {isOverdue && <span className="badge-overdue flex-shrink-0">เกิน {overdueInfo!.overduePeriods}ว</span>}
+                      {isOverdue && <span className="badge-overdue flex-shrink-0">เกินกำหนด {overdueInfo!.overduePeriods} วัน</span>}
                     </div>
                     {loan ? (
                       <p className="text-white/40 text-xs">
