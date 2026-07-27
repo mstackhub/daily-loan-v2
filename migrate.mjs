@@ -38,6 +38,13 @@ async function migrate() {
     const { debtors, loans, payments, settings } = result.data;
     console.log(`✅ Loaded: ${debtors.length} debtors, ${loans.length} loans, ${payments.length} payments`);
 
+    // Clear existing data for clean import
+    console.log("🧹 Clearing existing V2 data...");
+    await supabase.from("payments").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("loans").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("debtors").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("settings").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
     // 2. Migrate settings
     if (settings) {
       console.log("⚙️ Migrating settings...");
@@ -124,13 +131,28 @@ async function migrate() {
 
     // 5. Migrate Payments
     console.log("💳 Migrating payments...");
+    if (payments.length > 0) {
+      console.log("Sample payment object keys:", Object.keys(payments[0]));
+      console.log("Sample payment values:", {
+        paymentId: payments[0].paymentId,
+        loanId: payments[0].loanId,
+        debtorId: payments[0].debtorId,
+        p_loanId: payments[0].loan_id,
+        p_debtorId: payments[0].debtor_id
+      });
+      console.log("Maps sizes:", { debtorIdMap: debtorIdMap.size, loanIdMap: loanIdMap.size });
+    }
     let payCount = 0;
     for (const p of payments) {
+      // Resolve debtorId from the parent loan in V1 since payments table does not contain debtorId column
+      const v1Loan = loans.find(l => l.loanId === p.loanId);
+      const v1DebtorId = v1Loan ? v1Loan.debtorId : undefined;
+
       const v2LoanId = loanIdMap.get(p.loanId);
-      const v2DebtorId = debtorIdMap.get(p.debtorId);
+      const v2DebtorId = debtorIdMap.get(v1DebtorId);
 
       if (!v2LoanId || !v2DebtorId) {
-        console.warn(`⚠️ Skipping payment ${p.paymentId} due to missing related loan/debtor mapping.`);
+        console.warn(`⚠️ Skipping payment ${p.paymentId} due to missing related loan/debtor mapping. LoanID: ${p.loanId}, DebtorID: ${v1DebtorId}`);
         continue;
       }
 
