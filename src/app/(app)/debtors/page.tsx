@@ -90,7 +90,7 @@ export default function DebtorsPage() {
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 flex-shrink-0",
                 selectedLenderId === "all"
-                  ? "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-500/20"
+                  ? "bg-violet-600 border-violet-600 text-white-force shadow-sm shadow-violet-500/20"
                   : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100"
               )}
             >
@@ -101,7 +101,7 @@ export default function DebtorsPage() {
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 flex-shrink-0",
                 selectedLenderId === "none"
-                  ? "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-500/20"
+                  ? "bg-violet-600 border-violet-600 text-white-force shadow-sm shadow-violet-500/20"
                   : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100"
               )}
             >
@@ -114,7 +114,7 @@ export default function DebtorsPage() {
                 className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 flex-shrink-0",
                   selectedLenderId === l.id
-                    ? "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-500/20"
+                    ? "bg-violet-600 border-violet-600 text-white-force shadow-sm shadow-violet-500/20"
                     : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100"
                 )}
               >

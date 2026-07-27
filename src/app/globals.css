@@ -202,7 +202,9 @@ html:not(.dark) .avatar *,
 html:not(.dark) .avatar-sm,
 html:not(.dark) .avatar-sm *,
 html:not(.dark) svg.text-white,
-html:not(.dark) svg.text-white * {
+html:not(.dark) svg.text-white *,
+html:not(.dark) .text-white-force,
+html:not(.dark) .text-white-force * {
   color: #ffffff !important;
 }
 
