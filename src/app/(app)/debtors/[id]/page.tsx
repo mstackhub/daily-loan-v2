@@ -27,8 +27,29 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const [showAddLoan, setShowAddLoan] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null);
 
   const debtor = debtors.find((d) => d.id === id);
+
+  async function handleDeleteLoan() {
+    if (!deleteLoanId) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from("loans").delete().eq("id", deleteLoanId);
+      if (error) throw error;
+
+      // Update local store state
+      setLoans(loans.filter((l) => l.id !== deleteLoanId));
+      setPayments(payments.filter((p) => p.loan_id !== deleteLoanId));
+
+      showToast("ลบสัญญากู้ยืมเรียบร้อยแล้ว", "success");
+      setDeleteLoanId(null);
+    } catch (err: any) {
+      showToast("เกิดข้อผิดพลาด: " + (err.message || err), "danger");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   async function handleDeleteDebtor() {
     if (!debtor) return;
@@ -234,9 +255,19 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                         <span className="w-2 h-2 rounded-full bg-violet-500"></span>
                         บิล #{debtorLoans.length - index} (กู้ {formatCurrency(l.principal)})
                       </h3>
-                      <span className={l.status === "active" ? "text-emerald-400 font-bold text-xs" : "text-white/30 text-xs"}>
-                        {l.status === "active" ? "กำลังผ่อน" : "ปิดสัญญาแล้ว"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={l.status === "active" ? "text-emerald-400 font-bold text-xs" : "text-white/30 text-xs"}>
+                          {l.status === "active" ? "กำลังผ่อน" : "ปิดสัญญาแล้ว"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteLoanId(l.id)}
+                          className="p-1 rounded bg-red-500/10 text-red-500 hover:bg-red-500/20 active:scale-95 transition-all"
+                          title="ลบบิลนี้"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 text-xs">
@@ -469,6 +500,44 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                 <button
                   type="button"
                   onClick={handleDeleteDebtor}
+                  className="btn-danger flex-1"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "กำลังลบ..." : "ยืนยันลบถาวร"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {deleteLoanId && (
+        <>
+          <div className="sheet-overlay animate-fade-in" onClick={() => setDeleteLoanId(null)} />
+          <div className="sheet-container animate-slide-up" style={{ zIndex: 60 }}>
+            <div className="sheet-handle" />
+            <div className="p-4 space-y-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto text-red-500">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">ยืนยันลบสัญญากู้ยืม (บิลนี้)?</h3>
+                <p className="text-xs text-red-400 font-medium mt-2">
+                  ⚠️ คำเตือน: การลบบิลนี้ จะทำให้ประวัติการชำระเงินทั้งหมดของบิลนี้ถูกลบออกจากระบบอย่างถาวรทันทีและไม่สามารถกู้คืนได้! (บิลอื่น ๆ ของลูกหนี้รายนี้จะไม่ได้รับผลกระทบ)
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2 pb-6">
+                <button
+                  type="button"
+                  onClick={() => setDeleteLoanId(null)}
+                  className="btn-secondary flex-1"
+                  disabled={isDeleting}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteLoan}
                   className="btn-danger flex-1"
                   disabled={isDeleting}
                 >
