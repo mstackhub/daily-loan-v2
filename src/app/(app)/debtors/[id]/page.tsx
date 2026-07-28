@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase/client";
 import { ChevronLeft, Phone, ShieldAlert, FileText, History, Image as ImageIcon, Trash2, X, Edit2 } from "lucide-react";
 import Link from "next/link";
 import { EditDebtorSheet } from "@/components/debtors/EditDebtorSheet";
+import { AddLoanSheet } from "@/components/debtors/AddLoanSheet";
 
 type Tab = "info" | "history" | "docs";
 
@@ -23,6 +24,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
   const [showEditDebtor, setShowEditDebtor] = useState(false);
+  const [showAddLoan, setShowAddLoan] = useState(false);
 
   const debtor = debtors.find((d) => d.id === id);
 
@@ -134,7 +136,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
             <a href={`tel:${debtor.phone}`} className="hover:underline">{formatPhone(debtor.phone)}</a>
           </div>
 
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-3 flex-wrap justify-center">
             <span className={debtor.status === "active" ? "badge-active" : "badge-closed"}>
               {debtor.status === "active" ? "กำลังกู้" : "ปิดยอดแล้ว"}
             </span>
@@ -148,6 +150,12 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                 แนะนำโดย: {debtor.referred_by}
               </span>
             )}
+            <button
+              onClick={() => setShowAddLoan(true)}
+              className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 active:scale-95 transition-all flex items-center gap-0.5"
+            >
+              + เปิดบิลกู้ใหม่
+            </button>
           </div>
 
           {/* Key values */}
@@ -392,6 +400,13 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
           debtor={debtor}
           loan={activeLoan}
           onClose={() => setShowEditDebtor(false)}
+        />
+      )}
+
+      {showAddLoan && (
+        <AddLoanSheet
+          debtorId={debtor.id}
+          onClose={() => setShowAddLoan(false)}
         />
       )}
     </div>
