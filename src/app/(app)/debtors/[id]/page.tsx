@@ -25,8 +25,32 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const [isCancelling, setIsCancelling] = useState(false);
   const [showEditDebtor, setShowEditDebtor] = useState(false);
   const [showAddLoan, setShowAddLoan] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const debtor = debtors.find((d) => d.id === id);
+
+  async function handleDeleteDebtor() {
+    if (!debtor) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from("debtors").delete().eq("id", debtor.id);
+      if (error) throw error;
+
+      // Update local store state
+      setDebtors(debtors.filter((d) => d.id !== debtor.id));
+      setLoans(loans.filter((l) => l.debtor_id !== debtor.id));
+      setPayments(payments.filter((p) => p.debtor_id !== debtor.id));
+
+      showToast("ลบข้อมูลลูกหนี้เรียบร้อยแล้ว", "success");
+      // Redirect back to debtors directory
+      window.location.href = "/debtors";
+    } catch (err: any) {
+      showToast("เกิดข้อผิดพลาด: " + (err.message || err), "danger");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   const debtorLoans = useMemo(() => {
     return loans
@@ -121,6 +145,14 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       {/* Main card */}
       <div className="px-4 space-y-4 pb-8">
         <div className="glass-card p-4 flex flex-col items-center text-center relative">
+          {/* Delete Debtor Button */}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="absolute top-4 left-4 p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all border border-red-500/20 text-red-500"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+
           {/* Edit Debtor Profile Button */}
           <button
             onClick={() => setShowEditDebtor(true)}
@@ -408,6 +440,44 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
           debtorId={debtor.id}
           onClose={() => setShowAddLoan(false)}
         />
+      )}
+
+      {showDeleteConfirm && (
+        <>
+          <div className="sheet-overlay animate-fade-in" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="sheet-container animate-slide-up" style={{ zIndex: 60 }}>
+            <div className="sheet-handle" />
+            <div className="p-4 space-y-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto text-red-500">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">ยืนยันลบลูกหนี้ "{debtor.full_name}"?</h3>
+                <p className="text-xs text-red-400 font-medium mt-2">
+                  ⚠️ คำเตือน: การลบลูกหนี้รายนี้ จะทำให้สัญญากู้ทั้งหมด ({debtorLoans.length} บิล) และประวัติการรับชำระเงินทั้งหมด ถูกลบออกจากระบบอย่างถาวรทันทีและไม่สามารถกู้คืนได้!
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2 pb-6">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="btn-secondary flex-1"
+                  disabled={isDeleting}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteDebtor}
+                  className="btn-danger flex-1"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "กำลังลบ..." : "ยืนยันลบถาวร"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
