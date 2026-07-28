@@ -84,11 +84,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
     return debtorLoans.find((l) => l.status === "active") || debtorLoans[0] || null;
   }, [debtorLoans]);
 
-  const firstActiveLoanId = useMemo(() => {
-    const active = debtorLoans.find((l) => l.status === "active");
-    if (active) return active.id;
-    return debtorLoans[0]?.id || null;
-  }, [debtorLoans]);
+
 
   const stats = useMemo(() => {
     const active = debtorLoans.filter((l) => l.status === "active");
@@ -256,7 +252,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
               <div className="space-y-2">
                 {debtorLoans.map((l, index) => {
                   const lender = l.lender_id ? lenders.find((len) => len.id === l.lender_id) : null;
-                  const isExpanded = expandedLoanId === l.id || (expandedLoanId === null && l.id === firstActiveLoanId);
+                  const isExpanded = expandedLoanId === l.id;
 
                   return (
                     <div key={l.id} className="glass-card border border-white/[0.05] overflow-hidden transition-all duration-300">
