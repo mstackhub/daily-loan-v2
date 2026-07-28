@@ -5,10 +5,30 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const V1_API_URL = "https://script.google.com/macros/s/AKfycbx7c5MqimQb-J5RCBTHbiqWGuaBrdKDE7pxm_axEh_tDjzMR9xCUDiAo793zlcnX_tEEw/exec";
-const SUPABASE_URL = "https://wothbxlykxslueihlcir.supabase.co";
-// Must use service role key to bypass RLS during migration
-const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvdGhieGx5a3hzbHVlaWhsY2lyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTEyNDkwMCwiZXhwIjoyMTAwNzAwOTAwfQ.waVHpR3WlmUmsbpmzqH2I01N5J6TsC4WgAEXRvknX3k";
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load env variables
+const envPath = path.join(__dirname, '.env.local');
+const envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+const env = {};
+envContent.split('\n').forEach(line => {
+  const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+  if (match) {
+    let value = match[2] ? match[2].trim() : '';
+    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+    if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+    env[match[1]] = value;
+  }
+});
+
+const V1_API_URL = env.NEXT_PUBLIC_GAS_URL || "https://script.google.com/macros/s/AKfycbwvAqcfbG7xQqZ8DedbcHZVgin3kaA-9d3qsQhsZTNf6Nzjm6n5a8Y9SFcHeo15VuaO/exec";
+const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL || "https://wothbxlykxslueihlcir.supabase.co";
+const SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
 
 globalThis.WebSocket = class {};
 

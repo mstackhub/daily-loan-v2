@@ -4,7 +4,7 @@
 -- ============================================
 
 -- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
 -- TABLE: settings
@@ -38,6 +38,23 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
 );
 
 -- ============================================
+-- TABLE: lenders (นายทุน)
+-- ============================================
+CREATE TABLE IF NOT EXISTS lenders (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL,
+  phone       text NOT NULL DEFAULT '',
+  note        text DEFAULT '',
+  created_at  timestamptz DEFAULT now(),
+  updated_at  timestamptz DEFAULT now()
+);
+
+-- Insert a default lender if none exist
+INSERT INTO lenders (name, phone)
+SELECT 'นายทุนเริ่มต้น', ''
+WHERE NOT EXISTS (SELECT 1 FROM lenders LIMIT 1);
+
+-- ============================================
 -- TABLE: debtors
 -- ============================================
 CREATE TABLE IF NOT EXISTS debtors (
@@ -56,6 +73,7 @@ CREATE TABLE IF NOT EXISTS debtors (
   house_reg_image_url   text DEFAULT '',
   house_image_url       text DEFAULT '',
   profile_image_url     text DEFAULT '',
+  referred_by           text DEFAULT '', -- ผู้แนะนำ
   created_at            timestamptz DEFAULT now(),
   updated_at            timestamptz DEFAULT now()
 );
@@ -66,10 +84,12 @@ CREATE TABLE IF NOT EXISTS debtors (
 CREATE TABLE IF NOT EXISTS loans (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   debtor_id           uuid NOT NULL REFERENCES debtors(id) ON DELETE CASCADE,
+  lender_id           uuid REFERENCES lenders(id) ON DELETE SET NULL, -- เชื่อมตารางนายทุน
   loan_date           date NOT NULL,
   principal           numeric NOT NULL,
   remaining_principal numeric NOT NULL,
   interest_per_period numeric NOT NULL,
+  guarantee_deduction numeric NOT NULL DEFAULT 0, -- หักค้ำประกัน
   minimum_periods     integer NOT NULL DEFAULT 5,
   status              text NOT NULL DEFAULT 'active',
   payment_frequency   text NOT NULL DEFAULT 'daily',
@@ -93,6 +113,7 @@ CREATE TABLE IF NOT EXISTS payments (
   slip_image_url      text DEFAULT '',
   status              text NOT NULL DEFAULT 'active',
   cancel_reason       text DEFAULT '',
+  principal_discount  numeric NOT NULL DEFAULT 0, -- ส่วนลดเงินต้น
   created_at          timestamptz DEFAULT now()
 );
 
@@ -112,6 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_debtors_status ON debtors(status);
 -- ============================================
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lenders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE debtors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
@@ -119,6 +141,7 @@ ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 -- Allow all operations via anon key (app controls access via PIN)
 CREATE POLICY "Allow all for anon" ON settings FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON bank_accounts FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON lenders FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON debtors FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON loans FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON payments FOR ALL TO anon USING (true) WITH CHECK (true);

@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/stores/appStore";
-import { getTodayStr } from "@/lib/utils";
 import { X, ChevronDown } from "lucide-react";
 import { AvatarPicker } from "@/components/shared/AvatarPicker";
 
@@ -21,30 +20,17 @@ const schema = z.object({
   google_map: z.string().optional(),
   note: z.string().optional(),
   profile_image_url: z.string().optional(),
-  lender_id: z.string().optional(),
   referred_by: z.string().optional(),
-  loan_date: z.string().min(1, "กรุณาเลือกวันที่"),
-  payment_frequency: z.enum(["daily", "weekly", "monthly"]),
-  principal: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
-  interest_per_period: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
-  guarantee_deduction: z.number({ message: "กรุณากรอกตัวเลข" }).min(0),
-  minimum_periods: z.number({ message: "กรุณากรอกตัวเลข" }).min(1),
 });
 
 type FormData = z.infer<typeof schema>;
-
-const FREQ_OPTIONS = [
-  { value: "daily", label: "รายวัน" },
-  { value: "weekly", label: "รายสัปดาห์" },
-  { value: "monthly", label: "รายเดือน" },
-];
 
 interface Props {
   onClose: () => void;
 }
 
 export function AddDebtorSheet({ onClose }: Props) {
-  const { debtors, setDebtors, loans, setLoans, lenders, settings, showToast } = useAppStore();
+  const { debtors, setDebtors, showToast } = useAppStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState("");
@@ -53,12 +39,6 @@ export function AddDebtorSheet({ onClose }: Props) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      loan_date: getTodayStr(),
-      payment_frequency: "daily",
-      interest_per_period: settings?.default_interest_per_day ?? 100,
-      guarantee_deduction: 0,
-      minimum_periods: settings?.default_minimum_days ?? 5,
-      principal: 0,
       referred_by: "",
     },
   });
@@ -66,7 +46,7 @@ export function AddDebtorSheet({ onClose }: Props) {
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      // Insert debtor
+      // Insert debtor only
       const { data: debtor, error: debtorErr } = await supabase
         .from("debtors")
         .insert({
@@ -88,30 +68,9 @@ export function AddDebtorSheet({ onClose }: Props) {
 
       if (debtorErr) throw debtorErr;
 
-      // Insert loan
-      const { data: loan, error: loanErr } = await supabase
-        .from("loans")
-        .insert({
-          debtor_id: debtor.id,
-          lender_id: data.lender_id || null,
-          loan_date: data.loan_date,
-          principal: data.principal,
-          remaining_principal: data.principal,
-          interest_per_period: data.interest_per_period,
-          guarantee_deduction: data.guarantee_deduction,
-          minimum_periods: data.minimum_periods,
-          status: "active",
-          payment_frequency: data.payment_frequency,
-        })
-        .select()
-        .single();
-
-      if (loanErr) throw loanErr;
-
       // Update store
       setDebtors([debtor, ...debtors]);
-      setLoans([loan, ...loans]);
-      showToast("เพิ่มลูกหนี้เรียบร้อยแล้ว", "success");
+      showToast("เพิ่มประวัติลูกหนี้ใหม่เรียบร้อยแล้ว", "success");
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -132,7 +91,7 @@ export function AddDebtorSheet({ onClose }: Props) {
 
         {/* Title bar */}
         <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-lg font-bold text-white">เพิ่มลูกหนี้ใหม่</h2>
+          <h2 className="text-lg font-bold text-white">เพิ่มประวัติลูกหนี้ใหม่</h2>
           <button type="button" onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
             <X className="w-4 h-4 text-white/60" />
           </button>
@@ -166,7 +125,7 @@ export function AddDebtorSheet({ onClose }: Props) {
 
           {/* Required fields */}
           <div className="space-y-3">
-            <p className="section-heading">ข้อมูลลูกหนี้</p>
+            <p className="section-heading">ข้อมูลลูกหนี้หลัก</p>
 
             <div>
               <label className="input-label">ชื่อ-นามสกุล *</label>
@@ -183,76 +142,6 @@ export function AddDebtorSheet({ onClose }: Props) {
             <div>
               <label className="input-label">ผู้แนะนำ (ถ้ามี)</label>
               <input {...register("referred_by")} className="input-field" placeholder="ชื่อผู้แนะนำ..." />
-            </div>
-          </div>
-
-          {/* Loan fields */}
-          <div className="space-y-3">
-            <p className="section-heading">ข้อมูลการกู้</p>
-
-            {lenders.length > 0 && (
-              <div>
-                <label className="input-label">ผู้ให้กู้ (นายทุน) *</label>
-                <select {...register("lender_id")} className="input-field">
-                  <option value="" className="bg-dark-800">-- เลือกผู้ให้กู้ --</option>
-                  {lenders.map((l) => (
-                    <option key={l.id} value={l.id} className="bg-dark-800">{l.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="input-label">วันที่เริ่มกู้ *</label>
-              <input {...register("loan_date")} type="date" className="input-field" />
-            </div>
-
-            <div>
-              <label className="input-label">ความถี่การชำระ *</label>
-              <select {...register("payment_frequency")} className="input-field">
-                {FREQ_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value} className="bg-dark-800">{o.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="input-label">จำนวนเงินกู้ (บาท) *</label>
-              <input
-                {...register("principal", { valueAsNumber: true })}
-                type="number"
-                className="input-field"
-                placeholder="5000"
-              />
-              {errors.principal && <p className="text-red-400 text-xs mt-1">{errors.principal.message}</p>}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="input-label text-[10px]">ดอกเบี้ย *</label>
-                <input
-                  {...register("interest_per_period", { valueAsNumber: true })}
-                  type="number"
-                  className="input-field py-2 text-xs"
-                />
-              </div>
-              <div>
-                <label className="input-label text-[10px]">หักค้ำประกัน</label>
-                <input
-                  {...register("guarantee_deduction", { valueAsNumber: true })}
-                  type="number"
-                  className="input-field py-2 text-xs"
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label className="input-label text-[10px]">งวดขั้นต่ำ *</label>
-                <input
-                  {...register("minimum_periods", { valueAsNumber: true })}
-                  type="number"
-                  className="input-field py-2 text-xs"
-                />
-              </div>
             </div>
           </div>
 
@@ -303,7 +192,7 @@ export function AddDebtorSheet({ onClose }: Props) {
             disabled={isSubmitting}
             className="btn-primary w-full text-center"
           >
-            {isSubmitting ? "กำลังบันทึก..." : "เพิ่มลูกหนี้"}
+            {isSubmitting ? "กำลังบันทึก..." : "เพิ่มประวัติลูกหนี้"}
           </button>
         </form>
       </div>
