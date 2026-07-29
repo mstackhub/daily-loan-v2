@@ -8,7 +8,7 @@ import { DailyReport } from "@/components/dashboard/DailyReport";
 import { AddDebtorSheet } from "@/components/debtors/AddDebtorSheet";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { Plus } from "lucide-react";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, formatPhone, cn } from "@/lib/utils";
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 
 export default function DashboardPage() {
@@ -158,6 +158,24 @@ export default function DashboardPage() {
       });
   }, [payments, debtors]);
 
+  const topDebtors = useMemo(() => {
+    const debtorInterestMap: Record<string, number> = {};
+    payments.forEach((p) => {
+      if (p.status === "active") {
+        debtorInterestMap[p.debtor_id] = (debtorInterestMap[p.debtor_id] || 0) + (p.interest_paid || 0);
+      }
+    });
+
+    return Object.entries(debtorInterestMap)
+      .map(([debtorId, totalInterest]) => {
+        const debtor = debtors.find((d) => d.id === debtorId);
+        return { debtor, totalInterest };
+      })
+      .filter((item): item is { debtor: typeof debtors[0]; totalInterest: number } => !!item.debtor)
+      .sort((a, b) => b.totalInterest - a.totalInterest)
+      .slice(0, 5);
+  }, [payments, debtors]);
+
   const lastMonthThaiName = useMemo(() => {
     const d = new Date(endDate + "T12:00:00");
     d.setMonth(d.getMonth() - 1);
@@ -264,6 +282,40 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top 5 Customers by Interest Paid */}
+        {topDebtors.length > 0 && (
+          <div className="glass-card p-5 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="text-slate-800 font-bold text-sm">จัดอันดับลูกค้าชั้นดี (ยอดดอกสะสมสูงสุด) 🏆</span>
+              <span className="text-[10px] bg-amber-50 text-amber-600 font-bold px-2.5 py-0.5 rounded-full border border-amber-100">Top 5 VIP</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {topDebtors.map(({ debtor, totalInterest }, idx) => {
+                const medals = ["🥇", "🥈", "🥉"];
+                const badge = idx < 3 ? medals[idx] : `${idx + 1}`;
+                return (
+                  <div key={debtor.id} className="flex justify-between items-center py-2.5 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 flex items-center justify-center font-bold text-slate-500 text-sm">
+                        {badge}
+                      </div>
+                      <DebtorAvatar debtor={debtor} size="sm" />
+                      <div>
+                        <span className="text-slate-800 font-bold block">{debtor.full_name}</span>
+                        <span className="text-slate-400 text-[10px]">เบอร์โทร: {formatPhone(debtor.phone)}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-amber-500 font-extrabold block text-sm">{formatCurrency(totalInterest)}</span>
+                      <span className="text-slate-400 text-[9px]">ดอกเบี้ยที่จ่ายทั้งหมด</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
