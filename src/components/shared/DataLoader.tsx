@@ -7,12 +7,20 @@ import type { Debtor, Loan, Payment, Settings, BankAccount, Lender } from "@/typ
 
 // Loads all initial data into Zustand store on mount
 export function DataLoader() {
-  const { setDebtors, setLoans, setPayments, setSettings, setBankAccounts, setLenders, setIsLoading } = useAppStore();
+  const { setDebtors, setLoans, setPayments, setSettings, setBankAccounts, setLenders, setIsLoading, setLoadingProgress } = useAppStore();
 
   useEffect(() => {
     async function loadAll() {
       setIsLoading(true);
+      setLoadingProgress(0);
       try {
+        let completed = 0;
+        const total = 6;
+        const updateProgress = () => {
+          completed += 1;
+          setLoadingProgress(Math.round((completed / total) * 100));
+        };
+
         const [
           { data: debtors },
           { data: loans },
@@ -21,12 +29,12 @@ export function DataLoader() {
           { data: bankAccounts },
           { data: lenders },
         ] = await Promise.all([
-          supabase.from("debtors").select("*").order("created_at", { ascending: false }),
-          supabase.from("loans").select("*").order("created_at", { ascending: false }),
-          supabase.from("payments").select("*").order("payment_date", { ascending: false }),
-          supabase.from("settings").select("*").limit(1),
-          supabase.from("bank_accounts").select("*").order("sort_order"),
-          supabase.from("lenders").select("*").order("name"),
+          supabase.from("debtors").select("*").order("created_at", { ascending: false }).then((r) => { updateProgress(); return r; }),
+          supabase.from("loans").select("*").order("created_at", { ascending: false }).then((r) => { updateProgress(); return r; }),
+          supabase.from("payments").select("*").order("payment_date", { ascending: false }).then((r) => { updateProgress(); return r; }),
+          supabase.from("settings").select("*").limit(1).then((r) => { updateProgress(); return r; }),
+          supabase.from("bank_accounts").select("*").order("sort_order").then((r) => { updateProgress(); return r; }),
+          supabase.from("lenders").select("*").order("name").then((r) => { updateProgress(); return r; }),
         ]);
 
         if (debtors) setDebtors(debtors as Debtor[]);

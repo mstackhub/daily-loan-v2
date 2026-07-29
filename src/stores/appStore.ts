@@ -16,6 +16,7 @@ interface AppStore {
   activeDebtorId: string | null;
   currentReportDate: string;
   isLoading: boolean;
+  loadingProgress: number;
   toast: { message: string; type: "success" | "danger" | "warning" | "info" } | null;
 
   // Actions
@@ -28,6 +29,7 @@ interface AppStore {
   setActiveDebtorId: (id: string | null) => void;
   setCurrentReportDate: (date: string) => void;
   setIsLoading: (v: boolean) => void;
+  setLoadingProgress: (v: number) => void;
   showToast: (message: string, type?: "success" | "danger" | "warning" | "info") => void;
   clearToast: () => void;
 }
@@ -42,6 +44,7 @@ export const useAppStore = create<AppStore>((set) => ({
   activeDebtorId: null,
   currentReportDate: new Date().toISOString().split("T")[0],
   isLoading: false,
+  loadingProgress: 0,
   toast: null,
 
   setDebtors: (debtors) => set({ debtors }),
@@ -53,6 +56,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setActiveDebtorId: (activeDebtorId) => set({ activeDebtorId }),
   setCurrentReportDate: (currentReportDate) => set({ currentReportDate }),
   setIsLoading: (isLoading) => set({ isLoading }),
+  setLoadingProgress: (loadingProgress) => set({ loadingProgress }),
   showToast: (message, type = "success") => {
     set({ toast: { message, type } });
     setTimeout(() => set({ toast: null }), 3500);
