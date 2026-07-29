@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9333ea" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#purpleGrad)" />
+  <!-- Wallet/Flow Logo white outline -->
+  <path d="M160 176c-17.6 0-32 14.4-32 32v128c0 17.6 14.4 32 32 32h192c17.6 0 32-14.4 32-32v-16h-48c-17.6 0-32-14.4-32-32s14.4-32 32-32h48v-16c0-17.6-14.4-32-32-32H160z" fill="#ffffff" />
+  <circle cx="336" cy="256" r="16" fill="#4f46e5" />
+  <path d="M192 128h128v32H192z" fill="#ffffff" opacity="0.8" />
+</svg>

@@ -6,7 +6,8 @@ const urlsToCache = [
   '/overdue',
   '/settings',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/icon.png'
 ];
 
 self.addEventListener('install', (event) => {
