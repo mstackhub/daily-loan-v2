@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ToastDisplay } from "@/components/shared/Toast";
 import { DataLoader } from "@/components/shared/DataLoader";
+import { LoadingOverlay } from "@/components/shared/LoadingOverlay";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -32,6 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <DataLoader />
+      <LoadingOverlay />
       {children}
       <ToastDisplay />
     </QueryClientProvider>

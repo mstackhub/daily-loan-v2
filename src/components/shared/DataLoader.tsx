@@ -7,10 +7,11 @@ import type { Debtor, Loan, Payment, Settings, BankAccount, Lender } from "@/typ
 
 // Loads all initial data into Zustand store on mount
 export function DataLoader() {
-  const { setDebtors, setLoans, setPayments, setSettings, setBankAccounts, setLenders } = useAppStore();
+  const { setDebtors, setLoans, setPayments, setSettings, setBankAccounts, setLenders, setIsLoading } = useAppStore();
 
   useEffect(() => {
     async function loadAll() {
+      setIsLoading(true);
       try {
         const [
           { data: debtors },
@@ -36,11 +37,13 @@ export function DataLoader() {
         if (lenders) setLenders(lenders as Lender[]);
       } catch (err) {
         console.error("Failed to load initial data:", err);
+      } finally {
+        setIsLoading(false);
       }
     }
 
     loadAll();
-  }, [setDebtors, setLoans, setPayments, setSettings, setBankAccounts, setLenders]);
+  }, [setDebtors, setLoans, setPayments, setSettings, setBankAccounts, setLenders, setIsLoading]);
 
   return null;
 }
