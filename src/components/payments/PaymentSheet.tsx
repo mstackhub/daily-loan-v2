@@ -201,7 +201,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
 
           {/* Payment Date Input */}
           <div>
-            <label className="input-label">วันที่ชำระเงิน</label>
+            <label className="input-label">งวดวันที่ชำระ</label>
             <input
               type="date"
               value={paymentDate}
