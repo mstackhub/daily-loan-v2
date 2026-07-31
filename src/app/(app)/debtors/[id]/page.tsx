@@ -8,12 +8,12 @@ import { formatCurrency, formatPhone, formatThaiDate, formatThaiDateTime, cn } f
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { supabase } from "@/lib/supabase/client";
-import { ChevronLeft, Phone, ShieldAlert, FileText, History, Image as ImageIcon, Trash2, X, Edit2, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, Phone, ShieldAlert, FileText, History, Image as ImageIcon, Trash2, X, Edit2, ChevronDown, ChevronUp, CalendarRange } from "lucide-react";
 import Link from "next/link";
 import { EditDebtorSheet } from "@/components/debtors/EditDebtorSheet";
 import { AddLoanSheet } from "@/components/debtors/AddLoanSheet";
 
-type Tab = "info" | "history" | "docs";
+type Tab = "info" | "schedule" | "history";
 
 function getPaymentSchedule(loan: Loan, payments: Payment[]) {
   const schedule = [];
@@ -106,6 +106,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null);
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
+  const [selectedScheduleLoanId, setSelectedScheduleLoanId] = useState<string | null>(null);
 
   const debtor = debtors.find((d) => d.id === id);
 
@@ -159,6 +160,12 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
 
   const activeLoan = useMemo(() => {
     return debtorLoans.find((l) => l.status === "active") || debtorLoans[0] || null;
+  }, [debtorLoans]);
+
+  const firstActiveLoanId = useMemo(() => {
+    const active = debtorLoans.find((l) => l.status === "active");
+    if (active) return active.id;
+    return debtorLoans[0]?.id || null;
   }, [debtorLoans]);
 
 
@@ -309,12 +316,15 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
         </div>
 
         {/* Tab switch */}
-        <div className="flex border-b border-white/[0.06]">
-          <button onClick={() => setActiveTab("info")} className={cn("tab-btn flex-1 flex items-center justify-center gap-2", activeTab === "info" && "active")}>
-            <FileText className="w-4 h-4" /> สัญญากู้ทั้งหมด ({debtorLoans.length})
+        <div className="flex border-b border-white/[0.06] text-xs">
+          <button onClick={() => setActiveTab("info")} className={cn("tab-btn flex-1 flex items-center justify-center gap-1.5 py-3", activeTab === "info" && "active")}>
+            <FileText className="w-3.5 h-3.5" /> สัญญากู้ ({debtorLoans.length})
           </button>
-          <button onClick={() => setActiveTab("history")} className={cn("tab-btn flex-1 flex items-center justify-center gap-2", activeTab === "history" && "active")}>
-            <History className="w-4 h-4" /> ประวัติชำระเงิน
+          <button onClick={() => setActiveTab("schedule")} className={cn("tab-btn flex-1 flex items-center justify-center gap-1.5 py-3", activeTab === "schedule" && "active")}>
+            <CalendarRange className="w-3.5 h-3.5" /> ตารางผ่อน
+          </button>
+          <button onClick={() => setActiveTab("history")} className={cn("tab-btn flex-1 flex items-center justify-center gap-1.5 py-3", activeTab === "history" && "active")}>
+            <History className="w-3.5 h-3.5" /> ประวัติชำระเงิน
           </button>
         </div>
 
@@ -404,48 +414,6 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                             )}
                           </div>
 
-                          {/* Payment Schedule Table */}
-                          <div className="pt-3 border-t border-white/[0.05]">
-                            <p className="text-[10px] font-bold text-white/50 mb-2">ตารางงวดชำระเงินรายวัน</p>
-                            <div className="overflow-x-auto max-h-[250px] overflow-y-auto border border-white/[0.05] rounded-xl">
-                              <table className="w-full text-[10px] text-left border-collapse">
-                                <thead>
-                                  <tr className="bg-white/[0.02] border-b border-white/[0.05] text-white/40">
-                                    <th className="p-2">งวดที่</th>
-                                    <th className="p-2">วันที่</th>
-                                    <th className="p-2 text-right">เรียกเก็บ</th>
-                                    <th className="p-2 text-right">จ่ายดอก</th>
-                                    <th className="p-2 text-right">จ่ายต้น</th>
-                                    <th className="p-2 text-right">ต้นคงเหลือ</th>
-                                    <th className="p-2 text-center">สถานะ</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/[0.03]">
-                                  {getPaymentSchedule(l, payments).map((row) => (
-                                    <tr key={row.period} className="hover:bg-white/[0.01]">
-                                      <td className="p-2 text-white/60 font-mono">#{row.period}</td>
-                                      <td className="p-2 text-white/80">{formatThaiDate(row.date)}</td>
-                                      <td className="p-2 text-right text-white/80">{formatCurrency(row.expectedInterest)}</td>
-                                      <td className="p-2 text-right text-emerald-400 font-semibold">{formatCurrency(row.interestPaid)}</td>
-                                      <td className="p-2 text-right text-primary-400 font-semibold">{formatCurrency(row.principalPaid)}</td>
-                                      <td className="p-2 text-right text-white/70 font-mono">{formatCurrency(row.remainingPrincipal)}</td>
-                                      <td className="p-2 text-center">
-                                        <span className={cn(
-                                          "px-1.5 py-0.5 rounded text-[8px] font-bold",
-                                          row.status === "paid" && "bg-emerald-500/10 text-emerald-400",
-                                          row.status === "partial" && "bg-amber-500/10 text-amber-400",
-                                          row.status === "unpaid" && "bg-red-500/10 text-red-400"
-                                        )}>
-                                          {row.status === "paid" ? "จ่ายครบ" : row.status === "partial" ? "บางส่วน" : "ค้างชำระ"}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-
                           {l.status === "active" && (
                             <button
                               onClick={() => setPaymentLoanId(l.id)}
@@ -484,6 +452,104 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === "schedule" && (
+          <div className="space-y-4">
+            {debtorLoans.length === 0 ? (
+              <div className="glass-card p-8 text-center text-white/30 text-sm">
+                ยังไม่มีสัญญากู้ยืม
+              </div>
+            ) : (
+              <div className="glass-card p-4 space-y-4">
+                {/* Select dropdown / tab selector if multiple loans */}
+                {debtorLoans.length > 1 && (
+                  <div className="space-y-2">
+                    <label className="text-white/40 text-xs font-semibold block">เลือกสัญญากู้ยืม</label>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {debtorLoans.map((l, index) => {
+                        const isSelected = (selectedScheduleLoanId || firstActiveLoanId) === l.id;
+                        return (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => setSelectedScheduleLoanId(l.id)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all border",
+                              isSelected
+                                ? "bg-primary-500/20 border-primary-500/40 text-primary-400 font-extrabold"
+                                : "bg-white/[0.04] border-white/10 text-white/50"
+                            )}
+                          >
+                            บิล #{debtorLoans.length - index} (กู้ {formatCurrency(l.principal)})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Table display */}
+                {(() => {
+                  const targetLoan = debtorLoans.find(l => l.id === (selectedScheduleLoanId || firstActiveLoanId)) || debtorLoans[0];
+                  if (!targetLoan) return null;
+                  const schedule = getPaymentSchedule(targetLoan, payments);
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/[0.05]">
+                        <div>
+                          <span className="text-white/40 text-[10px] block">กำลังดูตารางของ</span>
+                          <span className="text-white text-xs font-extrabold">เงินกู้ {formatCurrency(targetLoan.principal)} ({targetLoan.payment_frequency === "daily" ? "รายวัน" : targetLoan.payment_frequency === "weekly" ? "รายสัปดาห์" : "รายเดือน"})</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-white/40 text-[10px] block">ดอกจริง/งวด</span>
+                          <span className="text-emerald-400 font-extrabold text-xs">{formatCurrency(Math.max(0, targetLoan.interest_per_period - (targetLoan.guarantee_deduction ?? 0)))}</span>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto border border-white/[0.06] rounded-2xl bg-white/[0.01]">
+                        <table className="w-full text-xs text-left border-collapse min-w-[500px]">
+                          <thead>
+                            <tr className="bg-white/[0.04] border-b border-white/[0.06] text-white/40">
+                              <th className="p-3 font-semibold">งวดที่</th>
+                              <th className="p-3 font-semibold">วันที่</th>
+                              <th className="p-3 text-right font-semibold">เรียกเก็บ</th>
+                              <th className="p-3 text-right font-semibold">จ่ายดอก</th>
+                              <th className="p-3 text-right font-semibold">จ่ายต้น</th>
+                              <th className="p-3 text-right font-semibold">ต้นคงเหลือ</th>
+                              <th className="p-3 text-center font-semibold">สถานะ</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/[0.04]">
+                            {schedule.map((row) => (
+                              <tr key={row.period} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="p-3 text-white/50 font-mono">#{row.period}</td>
+                                <td className="p-3 text-white/80 font-medium">{formatThaiDate(row.date)}</td>
+                                <td className="p-3 text-right text-white/80 font-mono">{formatCurrency(row.expectedInterest)}</td>
+                                <td className="p-3 text-right text-emerald-400 font-extrabold font-mono">{formatCurrency(row.interestPaid)}</td>
+                                <td className="p-3 text-right text-primary-400 font-semibold font-mono">{formatCurrency(row.principalPaid)}</td>
+                                <td className="p-3 text-right text-white/70 font-bold font-mono">{formatCurrency(row.remainingPrincipal)}</td>
+                                <td className="p-3 text-center">
+                                  <span className={cn(
+                                    "px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-block border",
+                                    row.status === "paid" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+                                    row.status === "partial" && "bg-amber-500/10 border-amber-500/20 text-amber-400",
+                                    row.status === "unpaid" && "bg-red-500/10 border-red-500/20 text-red-400"
+                                  )}>
+                                    {row.status === "paid" ? "จ่ายครบ" : row.status === "partial" ? "บางส่วน" : "ค้างชำระ"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
 
