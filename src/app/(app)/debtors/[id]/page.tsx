@@ -343,9 +343,6 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
           <button onClick={() => setActiveTab("info")} className={cn("tab-btn flex-1 flex items-center justify-center gap-1.5 py-3", activeTab === "info" && "active")}>
             <FileText className="w-3.5 h-3.5" /> สัญญากู้ ({debtorLoans.length})
           </button>
-          <button onClick={() => setActiveTab("schedule")} className={cn("tab-btn flex-1 flex items-center justify-center gap-1.5 py-3", activeTab === "schedule" && "active")}>
-            <CalendarRange className="w-3.5 h-3.5" /> ตารางผ่อน
-          </button>
           <button onClick={() => setActiveTab("history")} className={cn("tab-btn flex-1 flex items-center justify-center gap-1.5 py-3", activeTab === "history" && "active")}>
             <History className="w-3.5 h-3.5" /> ประวัติ
           </button>
