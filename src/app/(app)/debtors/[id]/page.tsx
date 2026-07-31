@@ -28,16 +28,18 @@ function getPaymentSchedule(loan: Loan, payments: Payment[]) {
     .sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime());
 
   let currentPrincipal = loan.principal;
-  let elapsed = 0;
-
   const currentDate = new Date(startDate);
   let periodIndex = 1;
 
-  let totalPaidInterestPool = loanPayments.reduce((sum, p) => sum + (p.interest_paid ?? 0), 0);
+  // Pools for tracking which payment covers which period
+  let interestPool = loanPayments.map(p => ({
+    date: p.payment_date.split(" ")[0],
+    amount: p.interest_paid ?? 0
+  })).filter(p => p.amount > 0);
+
   let paymentMapByDate: Record<string, { principal: number; interest: number }> = {};
-  
   loanPayments.forEach(p => {
-    const dStr = p.payment_date.split(" ")[0]; // handles both ISO space-separated or date formats
+    const dStr = p.payment_date.split(" ")[0];
     if (!paymentMapByDate[dStr]) {
       paymentMapByDate[dStr] = { principal: 0, interest: 0 };
     }
@@ -48,12 +50,32 @@ function getPaymentSchedule(loan: Loan, payments: Payment[]) {
   while (currentDate <= today || periodIndex <= loan.minimum_periods) {
     const dateStr = currentDate.toISOString().split("T")[0];
     const paidOnThisDate = paymentMapByDate[dateStr] || { principal: 0, interest: 0 };
-    const paidInterestForThisPeriod = Math.min(netInterest, Math.max(0, totalPaidInterestPool - (periodIndex - 1) * netInterest));
+    
+    // Allocate interest needed for this period from the chronological interestPool
+    let interestNeeded = netInterest;
+    let interestPaidThisPeriod = 0;
+    let transactionDates: string[] = [];
+
+    while (interestNeeded > 0 && interestPool.length > 0) {
+      const currentPay = interestPool[0];
+      const take = Math.min(interestNeeded, currentPay.amount);
+      interestNeeded -= take;
+      interestPaidThisPeriod += take;
+      currentPay.amount -= take;
+
+      if (!transactionDates.includes(currentPay.date)) {
+        transactionDates.push(currentPay.date);
+      }
+
+      if (currentPay.amount <= 0) {
+        interestPool.shift();
+      }
+    }
 
     let status: "paid" | "partial" | "unpaid" = "unpaid";
-    if (paidInterestForThisPeriod >= netInterest) {
+    if (interestPaidThisPeriod >= netInterest) {
       status = "paid";
-    } else if (paidInterestForThisPeriod > 0) {
+    } else if (interestPaidThisPeriod > 0) {
       status = "partial";
     }
 
@@ -67,9 +89,10 @@ function getPaymentSchedule(loan: Loan, payments: Payment[]) {
       period: periodIndex,
       date: dateStr,
       expectedInterest: netInterest,
-      interestPaid: paidInterestForThisPeriod,
+      interestPaid: interestPaidThisPeriod,
       principalPaid: paidOnThisDate.principal,
       remainingPrincipal: currentPrincipal,
+      transactionDate: transactionDates.map(d => formatThaiDate(d)).join(", ") || "-",
       status,
     });
 
@@ -509,11 +532,12 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                       </div>
 
                       <div className="overflow-x-auto border border-white/[0.06] rounded-2xl bg-white/[0.01]">
-                        <table className="w-full text-xs text-left border-collapse min-w-[500px]">
+                        <table className="w-full text-xs text-left border-collapse min-w-[650px]">
                           <thead>
                             <tr className="bg-white/[0.04] border-b border-white/[0.06] text-white/40">
                               <th className="p-3 font-semibold">งวดที่</th>
-                              <th className="p-3 font-semibold">วันที่</th>
+                              <th className="p-3 font-semibold">งวดวันที่ชำระ</th>
+                              <th className="p-3 font-semibold">วันที่ทำรายการ</th>
                               <th className="p-3 text-right font-semibold">เรียกเก็บ</th>
                               <th className="p-3 text-right font-semibold">จ่ายดอก</th>
                               <th className="p-3 text-right font-semibold">จ่ายต้น</th>
@@ -526,6 +550,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                               <tr key={row.period} className="hover:bg-white/[0.02] transition-colors">
                                 <td className="p-3 text-white/50 font-mono">#{row.period}</td>
                                 <td className="p-3 text-white/80 font-medium">{formatThaiDate(row.date)}</td>
+                                <td className="p-3 text-white/60 text-[11px] font-mono">{row.transactionDate}</td>
                                 <td className="p-3 text-right text-white/80 font-mono">{formatCurrency(row.expectedInterest)}</td>
                                 <td className="p-3 text-right text-emerald-400 font-extrabold font-mono">{formatCurrency(row.interestPaid)}</td>
                                 <td className="p-3 text-right text-primary-400 font-semibold font-mono">{formatCurrency(row.principalPaid)}</td>
