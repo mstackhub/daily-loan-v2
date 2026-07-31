@@ -324,7 +324,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
             <CalendarRange className="w-3.5 h-3.5" /> ตารางผ่อน
           </button>
           <button onClick={() => setActiveTab("history")} className={cn("tab-btn flex-1 flex items-center justify-center gap-1.5 py-3", activeTab === "history" && "active")}>
-            <History className="w-3.5 h-3.5" /> ประวัติชำระเงิน
+            <History className="w-3.5 h-3.5" /> ประวัติ
           </button>
         </div>
 
