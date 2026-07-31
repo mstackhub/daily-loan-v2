@@ -9,10 +9,10 @@ import { AddDebtorSheet } from "@/components/debtors/AddDebtorSheet";
 import { Search, Plus, LayoutGrid, List, ChevronRight, Phone } from "lucide-react";
 import Link from "next/link";
 
-type FilterTab = "all" | "active" | "closed";
+type FilterTab = "all" | "active" | "unpaid" | "overdue" | "closed";
 
 export default function DebtorsPage() {
-  const { debtors, loans, payments, lenders } = useAppStore();
+  const { debtors, loans, payments, lenders, currentReportDate } = useAppStore();
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [selectedLenderId, setSelectedLenderId] = useState<string>("all");
@@ -24,6 +24,20 @@ export default function DebtorsPage() {
       .filter((d) => {
         if (filterTab === "active") return d.status === "active";
         if (filterTab === "closed") return d.status === "closed";
+        if (filterTab === "unpaid") {
+          if (d.status !== "active") return false;
+          const hasPaidToday = payments.some(
+            (p) => p.debtor_id === d.id && p.status === "active" && p.payment_date.startsWith(currentReportDate)
+          );
+          return !hasPaidToday;
+        }
+        if (filterTab === "overdue") {
+          if (d.status !== "active") return false;
+          const loan = loans.find((l) => l.debtor_id === d.id && l.status === "active");
+          if (!loan) return false;
+          const overdueInfo = getLoanOverdueInfo(loan, payments);
+          return overdueInfo.isOverdue;
+        }
         return true;
       })
       .filter((d) => {
@@ -46,13 +60,35 @@ export default function DebtorsPage() {
           d.phone.includes(q)
         );
       });
-  }, [debtors, loans, search, filterTab, selectedLenderId]);
+  }, [debtors, loans, payments, currentReportDate, search, filterTab, selectedLenderId]);
 
-  const counts = useMemo(() => ({
-    all: debtors.length,
-    active: debtors.filter((d) => d.status === "active").length,
-    closed: debtors.filter((d) => d.status === "closed").length,
-  }), [debtors]);
+  const counts = useMemo(() => {
+    let unpaidCount = 0;
+    let overdueCount = 0;
+
+    debtors.forEach((d) => {
+      if (d.status === "active") {
+        const loan = loans.find((l) => l.debtor_id === d.id && l.status === "active");
+        if (loan) {
+          const overdueInfo = getLoanOverdueInfo(loan, payments);
+          if (overdueInfo.isOverdue) overdueCount++;
+
+          const hasPaidToday = payments.some(
+            (p) => p.debtor_id === d.id && p.status === "active" && p.payment_date.startsWith(currentReportDate)
+          );
+          if (!hasPaidToday) unpaidCount++;
+        }
+      }
+    });
+
+    return {
+      all: debtors.length,
+      active: debtors.filter((d) => d.status === "active").length,
+      unpaid: unpaidCount,
+      overdue: overdueCount,
+      closed: debtors.filter((d) => d.status === "closed").length,
+    };
+  }, [debtors, loans, payments, currentReportDate]);
 
   function getActiveLoan(debtorId: string) {
     return loans.find((l) => l.debtor_id === debtorId && l.status === "active")
@@ -123,15 +159,23 @@ export default function DebtorsPage() {
         </div>
 
         {/* Tabs + View toggle */}
-        <div className="flex items-center justify-between">
-          <div className="flex">
-            {(["all", "active", "closed"] as FilterTab[]).map((tab) => (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex overflow-x-auto no-scrollbar gap-1 flex-1 py-1">
+            {(["all", "active", "unpaid", "overdue", "closed"] as FilterTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilterTab(tab)}
-                className={cn("tab-btn text-sm", filterTab === tab && "active")}
+                className={cn("tab-btn text-xs whitespace-nowrap px-3 py-1.5", filterTab === tab && "active")}
               >
-                {tab === "all" ? `ทั้งหมด (${counts.all})` : tab === "active" ? `กู้อยู่ (${counts.active})` : `ปิดยอด (${counts.closed})`}
+                {tab === "all"
+                  ? `ทั้งหมด (${counts.all})`
+                  : tab === "active"
+                  ? `กู้อยู่ (${counts.active})`
+                  : tab === "unpaid"
+                  ? `ค้างชำระ (${counts.unpaid})`
+                  : tab === "overdue"
+                  ? `เกินกำหนด (${counts.overdue})`
+                  : `ปิดยอด (${counts.closed})`}
               </button>
             ))}
           </div>
