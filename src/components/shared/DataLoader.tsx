@@ -43,6 +43,9 @@ export function DataLoader() {
         if (settingsRows && settingsRows.length > 0) setSettings(settingsRows[0] as Settings);
         if (bankAccounts) setBankAccounts(bankAccounts as BankAccount[]);
         if (lenders) setLenders(lenders as Lender[]);
+
+        setLoadingProgress(100);
+        await new Promise((resolve) => setTimeout(resolve, 400));
       } catch (err) {
         console.error("Failed to load initial data:", err);
       } finally {
