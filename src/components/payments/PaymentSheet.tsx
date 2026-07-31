@@ -27,7 +27,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
   const [selectedBankId, setSelectedBankId] = useState(bankAccounts[0]?.id || "");
   const [slipFile, setSlipFile] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentDate] = useState(currentReportDate);
+  const [paymentDate, setPaymentDate] = useState(currentReportDate);
 
   const numAmount = parseFloat(amount) || 0;
   const numDiscount = parseFloat(discount) || 0;
@@ -196,6 +196,17 @@ export function PaymentSheet({ loanId, onClose }: Props) {
               onChange={(e) => setAmount(e.target.value)}
               className="input-field text-xl font-bold"
               placeholder="0"
+            />
+          </div>
+
+          {/* Payment Date Input */}
+          <div>
+            <label className="input-label">วันที่ชำระเงิน</label>
+            <input
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              className="input-field"
             />
           </div>
 

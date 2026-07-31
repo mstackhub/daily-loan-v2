@@ -191,6 +191,12 @@ export default function DebtorsPage() {
                           <span className="text-slate-700 font-bold">{formatCurrency(activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0))}</span>
                         </div>
                         <div className="flex justify-between items-center">
+                          <span className="text-slate-400">ดอกจริงรวม</span>
+                          <span className="text-emerald-600 font-bold">
+                            {formatCurrency(activeLoans.reduce((sum, l) => sum + Math.max(0, l.interest_per_period - (l.guarantee_deduction ?? 0)), 0))}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
                           <span className="text-slate-400">สัญญาค้าง</span>
                           <span className="text-slate-600 font-medium truncate max-w-[80px]">{activeLoans.length} บิล</span>
                         </div>
@@ -239,7 +245,7 @@ export default function DebtorsPage() {
                     </div>
                     {activeLoansForThisDebtor.length > 0 ? (
                       <p className="text-slate-400 text-xs mt-1">
-                        กู้อยู่ <span className="text-slate-700 font-semibold">{activeLoansForThisDebtor.length} บิล</span> | ค้างต้นรวม <span className="text-violet-600 font-bold">{formatCurrency(totalRemainingPrincipal)}</span>
+                        กู้อยู่ <span className="text-slate-700 font-semibold">{activeLoansForThisDebtor.length} บิล</span> | ค้างต้น <span className="text-violet-600 font-bold">{formatCurrency(totalRemainingPrincipal)}</span> | ดอกจริง <span className="text-emerald-600 font-bold">{formatCurrency(activeLoansForThisDebtor.reduce((sum, l) => sum + Math.max(0, l.interest_per_period - (l.guarantee_deduction ?? 0)), 0))}</span>
                       </p>
                     ) : (
                       <p className="text-slate-400 text-xs mt-1">{formatPhone(debtor.phone)}</p>

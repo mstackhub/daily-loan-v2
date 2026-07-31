@@ -1,5 +1,6 @@
 "use client";
 
+import type { Loan, Payment } from "@/types";
 import { useMemo, useState } from "react";
 import { useAppStore } from "@/stores/appStore";
 import { getLoanOverdueInfo } from "@/lib/business-logic/interest";
@@ -13,6 +14,82 @@ import { EditDebtorSheet } from "@/components/debtors/EditDebtorSheet";
 import { AddLoanSheet } from "@/components/debtors/AddLoanSheet";
 
 type Tab = "info" | "history" | "docs";
+
+function getPaymentSchedule(loan: Loan, payments: Payment[]) {
+  const schedule = [];
+  const startDate = new Date(loan.loan_date + "T12:00:00");
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+
+  const freq = loan.payment_frequency ?? "daily";
+  const netInterest = Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0));
+  const loanPayments = payments
+    .filter((p) => p.loan_id === loan.id && p.status === "active")
+    .sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime());
+
+  let currentPrincipal = loan.principal;
+  let elapsed = 0;
+
+  const currentDate = new Date(startDate);
+  let periodIndex = 1;
+
+  let totalPaidInterestPool = loanPayments.reduce((sum, p) => sum + (p.interest_paid ?? 0), 0);
+  let paymentMapByDate: Record<string, { principal: number; interest: number }> = {};
+  
+  loanPayments.forEach(p => {
+    const dStr = p.payment_date.split(" ")[0]; // handles both ISO space-separated or date formats
+    if (!paymentMapByDate[dStr]) {
+      paymentMapByDate[dStr] = { principal: 0, interest: 0 };
+    }
+    paymentMapByDate[dStr].principal += p.principal_paid ?? 0;
+    paymentMapByDate[dStr].interest += p.interest_paid ?? 0;
+  });
+
+  while (currentDate <= today || periodIndex <= loan.minimum_periods) {
+    const dateStr = currentDate.toISOString().split("T")[0];
+    const paidOnThisDate = paymentMapByDate[dateStr] || { principal: 0, interest: 0 };
+    const paidInterestForThisPeriod = Math.min(netInterest, Math.max(0, totalPaidInterestPool - (periodIndex - 1) * netInterest));
+
+    let status: "paid" | "partial" | "unpaid" = "unpaid";
+    if (paidInterestForThisPeriod >= netInterest) {
+      status = "paid";
+    } else if (paidInterestForThisPeriod > 0) {
+      status = "partial";
+    }
+
+    const principalPaidOnThisDate = loanPayments
+      .filter(p => p.payment_date.split(" ")[0] === dateStr)
+      .reduce((sum, p) => sum + (p.principal_paid ?? 0), 0);
+    
+    currentPrincipal = Math.max(0, currentPrincipal - principalPaidOnThisDate);
+
+    schedule.push({
+      period: periodIndex,
+      date: dateStr,
+      expectedInterest: netInterest,
+      interestPaid: paidInterestForThisPeriod,
+      principalPaid: paidOnThisDate.principal,
+      remainingPrincipal: currentPrincipal,
+      status,
+    });
+
+    periodIndex++;
+    if (freq === "daily") {
+      currentDate.setDate(currentDate.getDate() + 1);
+    } else if (freq === "weekly") {
+      currentDate.setDate(currentDate.getDate() + 7);
+    } else if (freq === "monthly") {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    if (currentDate > today && periodIndex > loan.minimum_periods) {
+      break;
+    }
+    if (periodIndex > 365) break;
+  }
+
+  return schedule;
+}
 
 export default function DebtorDetailsPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -325,6 +402,48 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                                 <span className="text-violet-300 font-bold">{lender.name}</span>
                               </div>
                             )}
+                          </div>
+
+                          {/* Payment Schedule Table */}
+                          <div className="pt-3 border-t border-white/[0.05]">
+                            <p className="text-[10px] font-bold text-white/50 mb-2">ตารางงวดชำระเงินรายวัน</p>
+                            <div className="overflow-x-auto max-h-[250px] overflow-y-auto border border-white/[0.05] rounded-xl">
+                              <table className="w-full text-[10px] text-left border-collapse">
+                                <thead>
+                                  <tr className="bg-white/[0.02] border-b border-white/[0.05] text-white/40">
+                                    <th className="p-2">งวดที่</th>
+                                    <th className="p-2">วันที่</th>
+                                    <th className="p-2 text-right">เรียกเก็บ</th>
+                                    <th className="p-2 text-right">จ่ายดอก</th>
+                                    <th className="p-2 text-right">จ่ายต้น</th>
+                                    <th className="p-2 text-right">ต้นคงเหลือ</th>
+                                    <th className="p-2 text-center">สถานะ</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/[0.03]">
+                                  {getPaymentSchedule(l, payments).map((row) => (
+                                    <tr key={row.period} className="hover:bg-white/[0.01]">
+                                      <td className="p-2 text-white/60 font-mono">#{row.period}</td>
+                                      <td className="p-2 text-white/80">{formatThaiDate(row.date)}</td>
+                                      <td className="p-2 text-right text-white/80">{formatCurrency(row.expectedInterest)}</td>
+                                      <td className="p-2 text-right text-emerald-400 font-semibold">{formatCurrency(row.interestPaid)}</td>
+                                      <td className="p-2 text-right text-primary-400 font-semibold">{formatCurrency(row.principalPaid)}</td>
+                                      <td className="p-2 text-right text-white/70 font-mono">{formatCurrency(row.remainingPrincipal)}</td>
+                                      <td className="p-2 text-center">
+                                        <span className={cn(
+                                          "px-1.5 py-0.5 rounded text-[8px] font-bold",
+                                          row.status === "paid" && "bg-emerald-500/10 text-emerald-400",
+                                          row.status === "partial" && "bg-amber-500/10 text-amber-400",
+                                          row.status === "unpaid" && "bg-red-500/10 text-red-400"
+                                        )}>
+                                          {row.status === "paid" ? "จ่ายครบ" : row.status === "partial" ? "บางส่วน" : "ค้างชำระ"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
 
                           {l.status === "active" && (
