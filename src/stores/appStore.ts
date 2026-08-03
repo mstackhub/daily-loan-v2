@@ -35,6 +35,16 @@ interface AppStore {
   clearToast: () => void;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hydration promise — resolves the moment Zustand finishes loading data
+// from localStorage. DataLoader waits on this before deciding whether to
+// show the full loading screen or just do a silent background refresh.
+// ─────────────────────────────────────────────────────────────────────────────
+let _resolveHydration!: () => void;
+export const storeHydrated = new Promise<void>((resolve) => {
+  _resolveHydration = resolve;
+});
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
@@ -77,6 +87,12 @@ export const useAppStore = create<AppStore>()(
         lenders: state.lenders,
         currentReportDate: state.currentReportDate,
       }),
+      onRehydrateStorage: () => (_state, error) => {
+        if (!error) {
+          // Resolve the promise — localStorage has finished loading into the store
+          _resolveHydration();
+        }
+      },
     }
   )
 );

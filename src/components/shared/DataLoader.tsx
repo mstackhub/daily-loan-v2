@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { useAppStore } from "@/stores/appStore";
+import { useAppStore, storeHydrated } from "@/stores/appStore";
 import type { Debtor, Loan, Payment, Settings, BankAccount, Lender } from "@/types";
 
 let isInitialLoaded = false;
@@ -13,14 +13,22 @@ export function DataLoader() {
 
   useEffect(() => {
     async function loadAll() {
+      // ── STEP 1: Wait for Zustand to finish rehydrating from localStorage ──
+      // Without this wait, DataLoader sees an empty store on every hard reload
+      // (e.g. opening the PWA on mobile) and shows the full loading screen even
+      // though the data is already cached locally.
+      await Promise.race([
+        storeHydrated,
+        new Promise<void>((resolve) => setTimeout(resolve, 300)), // max wait
+      ]);
+
       const state = useAppStore.getState();
       const hasData = state.debtors.length > 0;
 
       if (isInitialLoaded || hasData) {
-        // ── Silent background refresh ──────────────────────────────────
-        // IMPORTANT: only update the store if the fetch actually returned data.
-        // Never overwrite cached data with an empty array caused by a timeout
-        // or network error (that was the root cause of "payments disappeared").
+        // ── Silent background refresh (no loading screen) ──────────────
+        // Only write to store when the fetch succeeds with no error.
+        // Never overwrite cached data with an empty array from a network failure.
         try {
           const [
             { data: debtors, error: e1 },
@@ -38,11 +46,8 @@ export function DataLoader() {
             supabase.from("lenders").select("*").order("name"),
           ]);
 
-          // Only commit to store if there was no error AND data was returned
           if (!e1 && debtors) setDebtors(debtors as Debtor[]);
           if (!e2 && loans) setLoans(loans as Loan[]);
-          // payments can legitimately be empty for a brand-new user — but only
-          // update when the response is error-free so we never wipe real data
           if (!e3 && payments !== null) setPayments(payments as Payment[]);
           if (!e4 && settingsRows && settingsRows.length > 0) setSettings(settingsRows[0] as Settings);
           if (!e5 && bankAccounts) setBankAccounts(bankAccounts as BankAccount[]);
@@ -55,7 +60,7 @@ export function DataLoader() {
         return;
       }
 
-      // ── First-time full load with progress bar ─────────────────────
+      // ── First-time full load with progress bar ────────────────────────
       setIsLoading(true);
       setLoadingProgress(0);
       try {

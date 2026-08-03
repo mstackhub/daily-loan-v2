@@ -2,6 +2,7 @@
 
 import type { Loan, Payment } from "@/types";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/stores/appStore";
 import { getLoanOverdueInfo } from "@/lib/business-logic/interest";
 import { formatCurrency, formatPhone, formatThaiDate, formatThaiDateTime, cn } from "@/lib/utils";
@@ -116,6 +117,7 @@ function getPaymentSchedule(loan: Loan, payments: Payment[]) {
 
 export default function DebtorDetailsPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const router = useRouter();
   const { debtors, setDebtors, loans, setLoans, payments, setPayments, lenders, showToast } = useAppStore();
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const [paymentLoanId, setPaymentLoanId] = useState<string | null>(null);
@@ -166,8 +168,8 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       setPayments(payments.filter((p) => p.debtor_id !== debtor.id));
 
       showToast("ลบข้อมูลลูกหนี้เรียบร้อยแล้ว", "success");
-      // Redirect back to debtors directory
-      window.location.href = "/debtors";
+      // Soft navigation — no full page reload
+      router.push("/debtors");
     } catch (err: any) {
       showToast("เกิดข้อผิดพลาด: " + (err.message || err), "danger");
     } finally {
