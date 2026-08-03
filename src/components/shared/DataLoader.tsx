@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/stores/appStore";
 import type { Debtor, Loan, Payment, Settings, BankAccount, Lender } from "@/types";
 
+let isInitialLoaded = false;
+
 // Loads all initial data into Zustand store on mount
 export function DataLoader() {
   const { setDebtors, setLoans, setPayments, setSettings, setBankAccounts, setLenders, setIsLoading, setLoadingProgress } = useAppStore();
@@ -14,7 +16,7 @@ export function DataLoader() {
       const state = useAppStore.getState();
       const hasData = state.debtors.length > 0;
 
-      if (hasData) {
+      if (isInitialLoaded || hasData) {
         // Silent background update if we already have data in store
         try {
           const [
@@ -39,6 +41,7 @@ export function DataLoader() {
           if (settingsRows && settingsRows.length > 0) setSettings(settingsRows[0] as Settings);
           if (bankAccounts) setBankAccounts(bankAccounts as BankAccount[]);
           if (lenders) setLenders(lenders as Lender[]);
+          isInitialLoaded = true;
         } catch (err) {
           console.error("Background sync failed:", err);
         }
@@ -79,6 +82,7 @@ export function DataLoader() {
         if (lenders) setLenders(lenders as Lender[]);
 
         setLoadingProgress(100);
+        isInitialLoaded = true;
         await new Promise((resolve) => setTimeout(resolve, 400));
       } catch (err) {
         console.error("Failed to load initial data:", err);
