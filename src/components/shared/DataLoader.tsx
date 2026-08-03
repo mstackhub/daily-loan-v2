@@ -11,6 +11,40 @@ export function DataLoader() {
 
   useEffect(() => {
     async function loadAll() {
+      const state = useAppStore.getState();
+      const hasData = state.debtors.length > 0;
+
+      if (hasData) {
+        // Silent background update if we already have data in store
+        try {
+          const [
+            { data: debtors },
+            { data: loans },
+            { data: payments },
+            { data: settingsRows },
+            { data: bankAccounts },
+            { data: lenders },
+          ] = await Promise.all([
+            supabase.from("debtors").select("*").order("created_at", { ascending: false }),
+            supabase.from("loans").select("*").order("created_at", { ascending: false }),
+            supabase.from("payments").select("*").order("payment_date", { ascending: false }),
+            supabase.from("settings").select("*").limit(1),
+            supabase.from("bank_accounts").select("*").order("sort_order"),
+            supabase.from("lenders").select("*").order("name"),
+          ]);
+
+          if (debtors) setDebtors(debtors as Debtor[]);
+          if (loans) setLoans(loans as Loan[]);
+          if (payments) setPayments(payments as Payment[]);
+          if (settingsRows && settingsRows.length > 0) setSettings(settingsRows[0] as Settings);
+          if (bankAccounts) setBankAccounts(bankAccounts as BankAccount[]);
+          if (lenders) setLenders(lenders as Lender[]);
+        } catch (err) {
+          console.error("Background sync failed:", err);
+        }
+        return;
+      }
+
       setIsLoading(true);
       setLoadingProgress(0);
       try {
