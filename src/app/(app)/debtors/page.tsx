@@ -27,7 +27,8 @@ export default function DebtorsPage() {
         if (filterTab === "unpaid") {
           if (d.status !== "active") return false;
           const hasPaidToday = payments.some(
-            (p) => p.debtor_id === d.id && p.status === "active" && p.payment_date.startsWith(currentReportDate)
+            // Bug #3 fix: normalize payment_date to handle both "YYYY-MM-DD HH:MM:SS" and ISO formats
+            (p) => p.debtor_id === d.id && p.status === "active" && p.payment_date.replace("T", " ").split(" ")[0] === currentReportDate
           );
           return !hasPaidToday;
         }
@@ -74,7 +75,8 @@ export default function DebtorsPage() {
           if (overdueInfo.isOverdue) overdueCount++;
 
           const hasPaidToday = payments.some(
-            (p) => p.debtor_id === d.id && p.status === "active" && p.payment_date.startsWith(currentReportDate)
+            // Bug #3 fix: normalize payment_date to handle both "YYYY-MM-DD HH:MM:SS" and ISO formats
+            (p) => p.debtor_id === d.id && p.status === "active" && p.payment_date.replace("T", " ").split(" ")[0] === currentReportDate
           );
           if (!hasPaidToday) unpaidCount++;
         }

@@ -72,7 +72,8 @@ export default function DashboardPage() {
     const todayCollected = payments
       .filter((p) => {
         if (p.status !== "active") return false;
-        const pDate = p.payment_date.split("T")[0];
+        // Bug #3 fix: normalize payment_date to handle both space-separated and ISO formats
+        const pDate = p.payment_date.replace("T", " ").split(" ")[0];
         return pDate >= startDate && pDate <= endDate;
       })
       .reduce((sum, p) => sum + p.amount, 0);
@@ -82,7 +83,7 @@ export default function DashboardPage() {
       .filter((l) => l.loan_date <= endDate)
       .reduce((sum, l) => {
         const paidBeforeDate = payments
-          .filter((p) => p.loan_id === l.id && p.status === "active" && p.payment_date.split("T")[0] <= endDate)
+          .filter((p) => p.loan_id === l.id && p.status === "active" && p.payment_date.replace("T", " ").split(" ")[0] <= endDate)
           .reduce((s, p) => s + (p.principal_paid ?? 0), 0);
         return sum + Math.max(0, l.principal - paidBeforeDate);
       }, 0);
@@ -99,7 +100,8 @@ export default function DashboardPage() {
     const monthInterestCollected = payments
       .filter((p) => {
         if (p.status !== "active") return false;
-        const pDate = p.payment_date.split("T")[0];
+        // Bug #3 fix: normalize payment_date to handle both space-separated and ISO formats
+        const pDate = p.payment_date.replace("T", " ").split(" ")[0];
         return pDate >= startDate && pDate <= endDate;
       })
       .reduce((sum, p) => sum + p.interest_paid, 0);
@@ -111,7 +113,8 @@ export default function DashboardPage() {
 
     // 7. Last month profit (interest collected) relative to endDate's month
     const lastMonthInterestCollected = payments
-      .filter((p) => p.status === "active" && p.payment_date.slice(0, 7) === lastMonthStr)
+      // Bug #3 fix: normalize payment_date before extracting YYYY-MM
+      .filter((p) => p.status === "active" && p.payment_date.replace("T", " ").split(" ")[0].slice(0, 7) === lastMonthStr)
       .reduce((sum, p) => sum + p.interest_paid, 0);
 
     return {
@@ -133,7 +136,8 @@ export default function DashboardPage() {
       const lenderPaymentsInRange = payments.filter((p) => {
         const loan = loans.find((l) => l.id === p.loan_id);
         if (!loan || loan.lender_id !== lender.id || p.status !== "active") return false;
-        const pDate = p.payment_date.split("T")[0];
+        // Bug #3 fix: normalize payment_date to handle both space-separated and ISO formats
+        const pDate = p.payment_date.replace("T", " ").split(" ")[0];
         return pDate >= startDate && pDate <= endDate;
       });
       const interestCollectedToday = lenderPaymentsInRange.reduce((sum, p) => sum + p.interest_paid, 0);

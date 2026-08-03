@@ -34,7 +34,9 @@ export function PaymentSheet({ loanId, onClose }: Props) {
 
   const preview = useMemo(() => {
     if (!loan) return null;
-    const p = calculatePaymentPreview(loan, loanPayments, numAmount);
+    // Bug #1 fix: pass paymentDate so overdue interest is calculated as of the selected payment date
+    const asOf = paymentDate ? new Date(paymentDate + "T12:00:00") : undefined;
+    const p = calculatePaymentPreview(loan, loanPayments, numAmount, asOf);
     if (p) {
       p.newRemainingPrincipal = Math.max(0, p.newRemainingPrincipal - numDiscount);
       if (p.newRemainingPrincipal === 0) {
@@ -42,7 +44,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
       }
     }
     return p;
-  }, [loan, loanPayments, numAmount, numDiscount]);
+  }, [loan, loanPayments, numAmount, numDiscount, paymentDate]);
 
   const selectedBank = bankAccounts.find((b) => b.id === selectedBankId);
   const promptpayId = settings?.promptpay_id || "";
@@ -173,7 +175,8 @@ export function PaymentSheet({ loanId, onClose }: Props) {
             </div>
             <div>
               <p className="text-white font-semibold text-sm">{debtor.full_name}</p>
-              <p className="text-white/40 text-xs">ค้างต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(loan.interest_per_period)}/{loan.payment_frequency === "daily" ? "วัน" : loan.payment_frequency === "weekly" ? "สัปดาห์" : "เดือน"}</p>
+              {/* Bug #5 fix: show net interest after guarantee_deduction */}
+              <p className="text-white/40 text-xs">ค้างต้น {formatCurrency(loan.remaining_principal)} | ดอก {formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}/{loan.payment_frequency === "daily" ? "วัน" : loan.payment_frequency === "weekly" ? "สัปดาห์" : "เดือน"}</p>
             </div>
           </div>
 

@@ -24,10 +24,11 @@ export default function PaymentsPage() {
         const loanPayments = payments.filter((p) => p.loan_id === loan.id);
         const overdueInfo = getLoanOverdueInfo(loan, payments, new Date(currentReportDate + "T12:00:00"));
 
+        // Bug #3 fix: normalize payment_date to handle both "2025-07-29 10:30:00" and "2025-07-29T10:30:00Z" formats
         const paidToday = loanPayments.some(
           (p) =>
             p.status === "active" &&
-            p.payment_date.startsWith(currentReportDate)
+            p.payment_date.replace("T", " ").split(" ")[0] === currentReportDate
         );
 
         return { loan, debtor, overdueInfo, paidToday };
@@ -45,7 +46,8 @@ export default function PaymentsPage() {
 
   const totalCollectedToday = useMemo(() => {
     return payments
-      .filter((p) => p.status === "active" && p.payment_date.startsWith(currentReportDate))
+      // Bug #3 fix: normalize payment_date to handle both "YYYY-MM-DD HH:MM:SS" and ISO formats
+      .filter((p) => p.status === "active" && p.payment_date.replace("T", " ").split(" ")[0] === currentReportDate)
       .reduce((sum, p) => sum + p.amount, 0);
   }, [payments, currentReportDate]);
 
@@ -140,7 +142,8 @@ export default function PaymentsPage() {
               (p) =>
                 p.loan_id === loan.id &&
                 p.status === "active" &&
-                p.payment_date.startsWith(currentReportDate)
+                // Bug #3 fix: normalize payment_date to handle both "YYYY-MM-DD HH:MM:SS" and ISO formats
+                p.payment_date.replace("T", " ").split(" ")[0] === currentReportDate
             );
             const payTime = todayPayment
               ? new Date(todayPayment.payment_date).toLocaleTimeString("th-TH", {

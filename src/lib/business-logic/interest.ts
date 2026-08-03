@@ -60,8 +60,9 @@ export function getLoanOverdueInfo(
     }
   }
 
+  // Bug #4 fix: standardized to status === "active" for consistency across codebase
   const activePayments = payments.filter(
-    (p) => p.loan_id === loan.id && p.status !== "cancelled"
+    (p) => p.loan_id === loan.id && p.status === "active"
   );
   const totalInterestPaid = activePayments.reduce(
     (sum, p) => sum + (p.interest_paid ?? 0), 0
@@ -159,8 +160,9 @@ export function calculatePaymentPreview(
 // ============================================
 
 export function recalcRemainingPrincipal(loan: Loan, payments: Payment[]): number {
+  // Bug #4 fix: standardized to status === "active" for consistency across codebase
   const activePayments = payments.filter(
-    (p) => p.loan_id === loan.id && p.status !== "cancelled"
+    (p) => p.loan_id === loan.id && p.status === "active"
   );
   const totalPrincipalPaid = activePayments.reduce(
     (sum, p) => sum + (p.principal_paid ?? 0) + (p.principal_discount ?? 0), 0

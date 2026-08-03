@@ -233,7 +233,8 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
       // Recalculate remaining principal for the loan
       const targetLoanPayments = payments.filter((p) => p.loan_id === targetLoan.id);
       const otherActivePays = targetLoanPayments.filter((p) => p.id !== cancelPaymentId && p.status !== "cancelled");
-      const totalPrincipalPaid = otherActivePays.reduce((sum, p) => sum + p.principal_paid, 0);
+      // Bug #2 fix: include principal_discount (matches recalcRemainingPrincipal logic)
+      const totalPrincipalPaid = otherActivePays.reduce((sum, p) => sum + (p.principal_paid ?? 0) + (p.principal_discount ?? 0), 0);
       const newRemaining = Math.max(0, targetLoan.principal - totalPrincipalPaid);
 
       // Re-activate loan and debtor
