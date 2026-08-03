@@ -40,7 +40,7 @@ export function DataLoader() {
           ] = await Promise.all([
             supabase.from("debtors").select("*").order("created_at", { ascending: false }),
             supabase.from("loans").select("*").order("created_at", { ascending: false }),
-            supabase.from("payments").select("*").order("payment_date", { ascending: false }),
+            supabase.from("payments").select("id, loan_id, debtor_id, payment_date, amount, interest_paid, principal_paid, remaining_principal, payment_method, status, cancel_reason, principal_discount, created_at").order("payment_date", { ascending: false }),
             supabase.from("settings").select("*").limit(1),
             supabase.from("bank_accounts").select("*").order("sort_order"),
             supabase.from("lenders").select("*").order("name"),
@@ -81,7 +81,7 @@ export function DataLoader() {
         ] = await Promise.all([
           supabase.from("debtors").select("*").order("created_at", { ascending: false }).then((r) => { tick(); return r; }),
           supabase.from("loans").select("*").order("created_at", { ascending: false }).then((r) => { tick(); return r; }),
-          supabase.from("payments").select("*").order("payment_date", { ascending: false }).then((r) => { tick(); return r; }),
+          supabase.from("payments").select("id, loan_id, debtor_id, payment_date, amount, interest_paid, principal_paid, remaining_principal, payment_method, status, cancel_reason, principal_discount, created_at").order("payment_date", { ascending: false }).then((r) => { tick(); return r; }),
           supabase.from("settings").select("*").limit(1).then((r) => { tick(); return r; }),
           supabase.from("bank_accounts").select("*").order("sort_order").then((r) => { tick(); return r; }),
           supabase.from("lenders").select("*").order("name").then((r) => { tick(); return r; }),

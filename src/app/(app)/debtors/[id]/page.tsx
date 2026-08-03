@@ -609,9 +609,24 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {p.payment_method === "transfer" && p.slip_image_url && (
+                          {p.payment_method === "transfer" && (
                             <button
-                              onClick={() => setSelectedSlipUrl(p.slip_image_url)}
+                              onClick={async () => {
+                                try {
+                                  const { data, error } = await supabase
+                                    .from("payments")
+                                    .select("slip_image_url")
+                                    .eq("id", p.id)
+                                    .single();
+                                  if (!error && data?.slip_image_url) {
+                                    setSelectedSlipUrl(data.slip_image_url);
+                                  } else {
+                                    showToast("ไม่พบไฟล์แนบสลิป", "warning");
+                                  }
+                                } catch (err) {
+                                  showToast("เกิดข้อผิดพลาดในการโหลดรูปภาพสลิป", "danger");
+                                }
+                              }}
                               className="p-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
                             >
                               <ImageIcon className="w-4 h-4 text-white/60" />

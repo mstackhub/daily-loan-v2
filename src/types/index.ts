@@ -90,7 +90,7 @@ export interface Payment {
   principal_paid: number;
   remaining_principal: number;
   payment_method: PaymentMethod;
-  slip_image_url: string;
+  slip_image_url?: string;
   status: PaymentStatus;
   cancel_reason: string;
   principal_discount?: number;
