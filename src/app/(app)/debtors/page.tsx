@@ -14,7 +14,7 @@ type FilterTab = "all" | "active" | "unpaid" | "overdue" | "closed";
 export default function DebtorsPage() {
   const { debtors, loans, payments, lenders, currentReportDate } = useAppStore();
   const [search, setSearch] = useState("");
-  const [filterTab, setFilterTab] = useState<FilterTab>("all");
+  const [filterTab, setFilterTab] = useState<FilterTab>("active");
   const [selectedLenderId, setSelectedLenderId] = useState<string>("all");
   const [isGridView, setIsGridView] = useState(false);
   const [showAddDebtor, setShowAddDebtor] = useState(false);
