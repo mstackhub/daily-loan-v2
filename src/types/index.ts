@@ -113,6 +113,16 @@ export interface OverdueInfo {
   totalInterestPaid: number;
 }
 
+export interface UnpaidDateItem {
+  periodIndex: number;
+  dateStr: string; // YYYY-MM-DD
+  displayDate: string; // e.g. "27 ส.ค. 69"
+  dayName: string; // e.g. "พฤหัสบดี"
+  interestAmount: number;
+  isOverdue: boolean;
+  isToday: boolean;
+}
+
 export interface PaymentPreview {
   amount: number;
   interestPaid: number;
