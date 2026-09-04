@@ -367,24 +367,24 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                         className={cn(
                           "flex items-center justify-between p-3 rounded-xl border cursor-pointer select-none transition-all duration-150 active:scale-[0.99]",
                           isSelected
-                            ? "bg-violet-600 text-white border-violet-600 shadow-sm shadow-violet-500/20 font-medium"
+                            ? "date-card-selected bg-violet-600 border-violet-600 shadow-md shadow-violet-500/25 text-white-force"
                             : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 shadow-xs"
                         )}
                       >
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center">
                             {isSelected ? (
-                              <CheckCircle className="w-5 h-5 text-white fill-white/20" />
+                              <CheckCircle className="w-5 h-5 text-white-force fill-white/20" />
                             ) : (
                               <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400" />
                             )}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className={cn("text-sm font-bold", isSelected ? "text-white" : "text-slate-800")}>
+                              <span className={cn("text-sm font-bold", isSelected ? "text-white-force" : "text-slate-800")}>
                                 {item.displayDate}
                               </span>
-                              <span className={cn("text-xs", isSelected ? "text-violet-200" : "text-slate-400")}>
+                              <span className={cn("text-xs font-medium", isSelected ? "text-white-force opacity-90" : "text-slate-400")}>
                                 ({item.dayName})
                               </span>
                             </div>
@@ -392,7 +392,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                               {item.isOverdue && (
                                 <span className={cn(
                                   "text-[10px] px-2 py-0.5 rounded-full font-bold",
-                                  isSelected ? "bg-white/20 text-white" : "bg-rose-50 text-rose-600 border border-rose-200"
+                                  isSelected ? "bg-white/25 text-white-force border border-white/30" : "bg-rose-50 text-rose-600 border border-rose-200"
                                 )}>
                                   ค้างชำระ
                                 </span>
@@ -400,7 +400,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                               {item.isToday && (
                                 <span className={cn(
                                   "text-[10px] px-2 py-0.5 rounded-full font-bold",
-                                  isSelected ? "bg-amber-400 text-slate-900" : "bg-amber-50 text-amber-700 border border-amber-200"
+                                  isSelected ? "bg-amber-300 text-slate-900 border border-amber-400" : "bg-amber-50 text-amber-700 border border-amber-200"
                                 )}>
                                   วันนี้
                                 </span>
@@ -408,7 +408,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                               {!item.isOverdue && !item.isToday && (
                                 <span className={cn(
                                   "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                                  isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                                  isSelected ? "bg-white/25 text-white-force border border-white/30" : "bg-slate-100 text-slate-500"
                                 )}>
                                   ล่วงหน้า
                                 </span>
@@ -418,7 +418,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                         </div>
 
                         <div className="text-right">
-                          <span className={cn("text-sm font-extrabold", isSelected ? "text-white" : "text-slate-800")}>
+                          <span className={cn("text-sm font-extrabold", isSelected ? "text-white-force" : "text-slate-800")}>
                             {formatCurrency(item.interestAmount)}
                           </span>
                         </div>
@@ -550,7 +550,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                 className={cn(
                   "flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-xs",
                   method === "cash"
-                    ? "bg-violet-600 border-violet-600 text-white shadow-violet-500/20"
+                    ? "bg-violet-600 border-violet-600 text-white-force shadow-violet-500/20"
                     : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                 )}
               >
@@ -562,7 +562,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                 className={cn(
                   "flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-xs",
                   method === "transfer"
-                    ? "bg-violet-600 border-violet-600 text-white shadow-violet-500/20"
+                    ? "bg-violet-600 border-violet-600 text-white-force shadow-violet-500/20"
                     : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                 )}
               >
@@ -614,7 +614,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                     <button
                       type="button"
                       onClick={() => setSlipFile(null)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black"
+                      className="absolute top-1 right-1 w-5 h-5 bg-black/70 text-white-force rounded-full flex items-center justify-center hover:bg-black"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -633,7 +633,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || numAmount <= 0}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-sm shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-all"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white-force font-bold text-sm shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-all"
           >
             {isSubmitting ? "กำลังบันทึก..." : `รับเงิน ${numAmount > 0 ? formatCurrency(numAmount) : ""}`}
           </button>
