@@ -690,11 +690,11 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
 
                       {/* EXPANDABLE DETAILS */}
                       {isExpanded && (
-                        <div className="mt-3 pt-3 border-t border-white/[0.08] space-y-2.5 animate-fade-in text-xs">
+                        <div className="mt-3 pt-3 border-t border-slate-200/80 space-y-3 animate-fade-in text-xs">
                           {/* Settled Dates Badges */}
                           <div>
-                            <p className="text-white/50 text-[11px] font-semibold mb-1.5 flex items-center gap-1.5">
-                              <CalendarDays className="w-3.5 h-3.5 text-violet-400" />
+                            <p className="text-slate-700 text-xs font-bold mb-2 flex items-center gap-1.5">
+                              <CalendarDays className="w-4 h-4 text-violet-600" />
                               ชำระสำหรับงวดวันที่ ({settledDates.length > 0 ? `${settledDates.length} วัน` : "คำนวณตามยอด"}):
                             </p>
                             {settledDates.length > 0 ? (
@@ -702,29 +702,29 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                                 {settledDates.map((d) => (
                                   <span
                                     key={d}
-                                    className="px-2 py-0.5 rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30 font-semibold text-[11px]"
+                                    className="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-800 border border-violet-300 font-bold text-xs shadow-xs"
                                   >
                                     {formatThaiDate(d)}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-white/40 text-[11px]">ชำระตามยอดเงินรวม {formatCurrency(p.amount)}</p>
+                              <p className="text-slate-500 text-xs">ชำระตามยอดเงินรวม {formatCurrency(p.amount)}</p>
                             )}
                           </div>
 
-                          {/* Detailed Breakdown */}
-                          <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-black/20 border border-white/5 text-[11px]">
-                            <div className="space-y-1 text-white/60">
-                              <div>ยอดที่รับชำระ: <span className="font-bold text-white">{formatCurrency(p.amount)}</span></div>
-                              <div>หักดอกเบี้ย: <span className="font-bold text-amber-400">{formatCurrency(p.interest_paid)}</span></div>
+                          {/* Detailed Breakdown Card */}
+                          <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs shadow-xs">
+                            <div className="space-y-1.5 text-slate-600 font-medium">
+                              <div>ยอดที่รับชำระ: <span className="font-extrabold text-slate-900 ml-1">{formatCurrency(p.amount)}</span></div>
+                              <div>หักดอกเบี้ย: <span className="font-extrabold text-amber-700 ml-1">{formatCurrency(p.interest_paid)}</span></div>
                             </div>
-                            <div className="space-y-1 text-white/60">
-                              <div>หักเงินต้น: <span className="font-bold text-primary-400">{formatCurrency(p.principal_paid)}</span></div>
+                            <div className="space-y-1.5 text-slate-600 font-medium">
+                              <div>หักเงินต้น: <span className="font-extrabold text-violet-700 ml-1">{formatCurrency(p.principal_paid)}</span></div>
                               {p.principal_discount ? (
-                                <div>ส่วนลดต้น: <span className="font-bold text-emerald-400">{formatCurrency(p.principal_discount)}</span></div>
+                                <div>ส่วนลดต้น: <span className="font-extrabold text-emerald-700 ml-1">{formatCurrency(p.principal_discount)}</span></div>
                               ) : null}
-                              <div>เงินต้นคงเหลือ: <span className="font-bold text-white">{formatCurrency(p.remaining_principal)}</span></div>
+                              <div>เงินต้นคงเหลือ: <span className="font-extrabold text-slate-900 ml-1">{formatCurrency(p.remaining_principal)}</span></div>
                             </div>
                           </div>
                         </div>

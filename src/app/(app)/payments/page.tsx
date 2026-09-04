@@ -218,10 +218,10 @@ export default function PaymentsPage() {
 
                 {/* EXPANDABLE PAID DETAILS */}
                 {paidToday && todayPayment && isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-emerald-200/60 space-y-2 text-xs animate-fade-in">
+                  <div className="mt-3 pt-3 border-t border-emerald-200/80 space-y-3 text-xs animate-fade-in">
                     <div>
-                      <p className="text-slate-500 text-[11px] font-semibold mb-1.5 flex items-center gap-1.5">
-                        <CalendarDays className="w-3.5 h-3.5 text-violet-600" />
+                      <p className="text-slate-700 text-xs font-bold mb-2 flex items-center gap-1.5">
+                        <CalendarDays className="w-4 h-4 text-violet-600" />
                         ชำระสำหรับงวดวันที่ ({settledDates.length > 0 ? `${settledDates.length} วัน` : "คำนวณตามยอด"}):
                       </p>
                       {settledDates.length > 0 ? (
@@ -229,28 +229,28 @@ export default function PaymentsPage() {
                           {settledDates.map((d) => (
                             <span
                               key={d}
-                              className="px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200 font-bold text-[11px]"
+                              className="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-800 border border-violet-300 font-bold text-xs shadow-xs"
                             >
                               {formatThaiDate(d)}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-slate-400 text-[11px]">ชำระตามยอดเงินรวม {formatCurrency(todayPayment.amount)}</p>
+                        <p className="text-slate-500 text-xs">ชำระตามยอดเงินรวม {formatCurrency(todayPayment.amount)}</p>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-white/70 border border-slate-200/80 text-[11px]">
-                      <div className="space-y-0.5 text-slate-500">
-                        <div>วิธีชำระ: <span className="font-bold text-slate-800">{todayPayment.payment_method === "cash" ? "เงินสด" : "โอนเงิน"}</span></div>
-                        <div>หักดอกเบี้ย: <span className="font-bold text-amber-600">{formatCurrency(todayPayment.interest_paid)}</span></div>
+                    <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-white border border-slate-200 text-xs shadow-xs">
+                      <div className="space-y-1.5 text-slate-600 font-medium">
+                        <div>วิธีชำระ: <span className="font-extrabold text-slate-900 ml-1">{todayPayment.payment_method === "cash" ? "💵 เงินสด" : "📱 โอนเงิน"}</span></div>
+                        <div>หักดอกเบี้ย: <span className="font-extrabold text-amber-700 ml-1">{formatCurrency(todayPayment.interest_paid)}</span></div>
                       </div>
-                      <div className="space-y-0.5 text-slate-500">
-                        <div>หักเงินต้น: <span className="font-bold text-violet-600">{formatCurrency(todayPayment.principal_paid)}</span></div>
+                      <div className="space-y-1.5 text-slate-600 font-medium">
+                        <div>หักเงินต้น: <span className="font-extrabold text-violet-700 ml-1">{formatCurrency(todayPayment.principal_paid)}</span></div>
                         {todayPayment.principal_discount ? (
-                          <div>ส่วนลดต้น: <span className="font-bold text-emerald-600">{formatCurrency(todayPayment.principal_discount)}</span></div>
+                          <div>ส่วนลดต้น: <span className="font-extrabold text-emerald-700 ml-1">{formatCurrency(todayPayment.principal_discount)}</span></div>
                         ) : null}
-                        <div>ต้นคงเหลือ: <span className="font-bold text-slate-800">{formatCurrency(todayPayment.remaining_principal)}</span></div>
+                        <div>ต้นคงเหลือ: <span className="font-extrabold text-slate-900 ml-1">{formatCurrency(todayPayment.remaining_principal)}</span></div>
                       </div>
                     </div>
                   </div>
