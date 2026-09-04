@@ -30,7 +30,15 @@ export function PaymentSheet({ loanId, onClose }: Props) {
     return getUnpaidDateItems(loan, loanPayments);
   }, [loan, loanPayments]);
 
-  const [selectedDateKeys, setSelectedDateKeys] = useState<string[]>([]);
+  // Initial selection: Select overdue dates and today on mount
+  const [selectedDateKeys, setSelectedDateKeys] = useState<string[]>(() => {
+    if (!loan) return [];
+    const dates = getUnpaidDateItems(loan, loanPayments);
+    const initial = dates.filter((u) => u.isOverdue || u.isToday).map((u) => u.dateStr);
+    if (initial.length > 0) return initial;
+    if (dates[0]) return [dates[0].dateStr];
+    return [];
+  });
   const [extraPrincipal, setExtraPrincipal] = useState("");
   const [amount, setAmount] = useState("");
   const [discount, setDiscount] = useState("");
@@ -44,18 +52,6 @@ export function PaymentSheet({ loanId, onClose }: Props) {
     if (!loan) return 0;
     return Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0));
   }, [loan]);
-
-  // Initial selection: Select overdue dates and today if available
-  useEffect(() => {
-    if (unpaidDates.length > 0 && selectedDateKeys.length === 0) {
-      const initial = unpaidDates.filter((u) => u.isOverdue || u.isToday).map((u) => u.dateStr);
-      if (initial.length > 0) {
-        setSelectedDateKeys(initial);
-      } else if (unpaidDates[0]) {
-        setSelectedDateKeys([unpaidDates[0].dateStr]);
-      }
-    }
-  }, [unpaidDates]);
 
   // Calculate totals for "dates" mode
   const selectedInterestTotal = useMemo(() => {
