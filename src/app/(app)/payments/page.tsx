@@ -2,17 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useAppStore } from "@/stores/appStore";
-import { getLoanOverdueInfo } from "@/lib/business-logic/interest";
-import { formatCurrency } from "@/lib/utils";
+import { getLoanOverdueInfo, getPaymentSettledDates } from "@/lib/business-logic/interest";
+import { formatCurrency, formatThaiDate } from "@/lib/utils";
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function PaymentsPage() {
   const { debtors, loans, payments, currentReportDate } = useAppStore();
   const [activeTab, setActiveTab] = useState<"unpaid" | "paid" | "all">("unpaid");
   const [paymentLoanId, setPaymentLoanId] = useState<string | null>(null);
+  const [expandedPaidLoanIds, setExpandedPaidLoanIds] = useState<string[]>([]);
 
   const reportItems = useMemo(() => {
     return loans
@@ -142,7 +143,6 @@ export default function PaymentsPage() {
               (p) =>
                 p.loan_id === loan.id &&
                 p.status === "active" &&
-                // Bug #3 fix: normalize payment_date to handle both "YYYY-MM-DD HH:MM:SS" and ISO formats
                 p.payment_date.replace("T", " ").split(" ")[0] === currentReportDate
             );
             const payTime = todayPayment
@@ -158,46 +158,102 @@ export default function PaymentsPage() {
             const billIndex = activeLoansForThisDebtor.findIndex((l) => l.id === loan.id) + 1;
             const billLabel = activeLoansForThisDebtor.length > 1 ? ` (บิล #${billIndex} - ฿${loan.principal})` : "";
 
+            const isExpanded = expandedPaidLoanIds.includes(loan.id);
+            const settledDates = todayPayment ? getPaymentSettledDates(todayPayment) : [];
+
             return (
               <div
                 key={loan.id}
                 className={cn(
-                  "glass-card-sm flex items-center gap-3 p-3.5 hover:bg-slate-50/50 transition-colors",
-                  paidToday && "bg-emerald-50/10 border-emerald-100"
+                  "glass-card-sm p-3.5 transition-all",
+                  paidToday && "bg-emerald-50/15 border-emerald-200/60"
                 )}
               >
-                <DebtorAvatar debtor={debtor} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-slate-800 text-sm font-semibold truncate">{debtor.full_name}{billLabel}</p>
-                    {overdueInfo.isOverdue && !paidToday && (
-                      <span className="badge-overdue flex-shrink-0 text-[9px] px-1.5 py-0.5">
-                        ค้าง {overdueInfo.overduePeriods} วัน
-                      </span>
+                <div className="flex items-center gap-3">
+                  <DebtorAvatar debtor={debtor} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-slate-800 text-sm font-semibold truncate">{debtor.full_name}{billLabel}</p>
+                      {overdueInfo.isOverdue && !paidToday && (
+                        <span className="badge-overdue flex-shrink-0 text-[9px] px-1.5 py-0.5">
+                          ค้าง {overdueInfo.overduePeriods} วัน
+                        </span>
+                      )}
+                    </div>
+                    {paidToday && todayPayment ? (
+                      <p className="text-emerald-600 text-xs font-semibold mt-1">
+                        จ่ายแล้วเมื่อ {payTime} น. • {formatCurrency(todayPayment.amount)}
+                      </p>
+                    ) : (
+                      <p className="text-slate-400 text-xs mt-1">
+                        ต้น <span className="text-slate-600 font-semibold">{formatCurrency(loan.remaining_principal)}</span> | ดอกจริง <span className="text-violet-600 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
+                      </p>
                     )}
                   </div>
-                  {paidToday && todayPayment ? (
-                    <p className="text-emerald-600 text-xs font-semibold mt-1">
-                      จ่ายแล้วเมื่อ {payTime} น. • {formatCurrency(todayPayment.amount)}
-                    </p>
+                  {paidToday ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isExpanded) {
+                          setExpandedPaidLoanIds(expandedPaidLoanIds.filter((id) => id !== loan.id));
+                        } else {
+                          setExpandedPaidLoanIds([...expandedPaidLoanIds, loan.id]);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span className="text-[11px] font-bold">จ่ายแล้ว</span>
+                      <ChevronDown className={cn("w-3.5 h-3.5 text-emerald-600 transition-transform duration-200", isExpanded && "rotate-180")} />
+                    </button>
                   ) : (
-                    <p className="text-slate-400 text-xs mt-1">
-                      ต้น <span className="text-slate-600 font-semibold">{formatCurrency(loan.remaining_principal)}</span> | ดอกจริง <span className="text-violet-600 font-bold">{formatCurrency(Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0)))}</span>
-                    </p>
+                    <button
+                      onClick={() => setPaymentLoanId(loan.id)}
+                      className="flex-shrink-0 px-3 py-1.5 bg-gradient-primary text-white text-xs font-semibold rounded-lg active:scale-95 transition-transform shadow-glow-primary"
+                    >
+                      รับเงิน
+                    </button>
                   )}
                 </div>
-                {paidToday ? (
-                  <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-[10px] font-bold">จ่ายแล้ว</span>
+
+                {/* EXPANDABLE PAID DETAILS */}
+                {paidToday && todayPayment && isExpanded && (
+                  <div className="mt-3 pt-3 border-t border-emerald-200/60 space-y-2 text-xs animate-fade-in">
+                    <div>
+                      <p className="text-slate-500 text-[11px] font-semibold mb-1.5 flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5 text-violet-600" />
+                        ชำระสำหรับงวดวันที่ ({settledDates.length > 0 ? `${settledDates.length} วัน` : "คำนวณตามยอด"}):
+                      </p>
+                      {settledDates.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {settledDates.map((d) => (
+                            <span
+                              key={d}
+                              className="px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200 font-bold text-[11px]"
+                            >
+                              {formatThaiDate(d)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 text-[11px]">ชำระตามยอดเงินรวม {formatCurrency(todayPayment.amount)}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-white/70 border border-slate-200/80 text-[11px]">
+                      <div className="space-y-0.5 text-slate-500">
+                        <div>วิธีชำระ: <span className="font-bold text-slate-800">{todayPayment.payment_method === "cash" ? "เงินสด" : "โอนเงิน"}</span></div>
+                        <div>หักดอกเบี้ย: <span className="font-bold text-amber-600">{formatCurrency(todayPayment.interest_paid)}</span></div>
+                      </div>
+                      <div className="space-y-0.5 text-slate-500">
+                        <div>หักเงินต้น: <span className="font-bold text-violet-600">{formatCurrency(todayPayment.principal_paid)}</span></div>
+                        {todayPayment.principal_discount ? (
+                          <div>ส่วนลดต้น: <span className="font-bold text-emerald-600">{formatCurrency(todayPayment.principal_discount)}</span></div>
+                        ) : null}
+                        <div>ต้นคงเหลือ: <span className="font-bold text-slate-800">{formatCurrency(todayPayment.remaining_principal)}</span></div>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => setPaymentLoanId(loan.id)}
-                    className="flex-shrink-0 px-3 py-1.5 bg-gradient-primary text-white text-xs font-semibold rounded-lg active:scale-95 transition-transform shadow-glow-primary"
-                  >
-                    รับเงิน
-                  </button>
                 )}
               </div>
             );

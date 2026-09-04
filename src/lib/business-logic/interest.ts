@@ -19,10 +19,61 @@ export function todayLocal(): Date {
 }
 
 // ============================================
-// UNPAID DATE ITEMS GENERATOR (CHECKBOX LIST)
+// UNPAID & SETTLED DATE ITEMS GENERATOR
 // ============================================
 
 const THAI_DAY_NAMES = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+export function getPaymentSettledDates(payment: Payment): string[] {
+  if (!payment) return [];
+  if (payment.cancel_reason && payment.cancel_reason.startsWith("DATES:")) {
+    return payment.cancel_reason.replace("DATES:", "").split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+export function getAllSettledDatesForLoan(loan: Loan, payments: Payment[]): Set<string> {
+  const activePayments = payments.filter((p) => p.loan_id === loan.id && p.status === "active");
+  const settled = new Set<string>();
+
+  let legacyInterestSum = 0;
+  for (const p of activePayments) {
+    const dates = getPaymentSettledDates(p);
+    if (dates.length > 0) {
+      dates.forEach((d) => settled.add(d));
+    } else if (p.interest_paid > 0) {
+      legacyInterestSum += p.interest_paid;
+    }
+  }
+
+  // Allocate legacy interest sequentially from period 1 forward if no explicit DATES: tag
+  if (legacyInterestSum > 0) {
+    const netInterest = Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0));
+    let legacyPeriodsCount = netInterest > 0 ? Math.floor(legacyInterestSum / netInterest) : 0;
+    
+    const loanStart = parseLocalDate(loan.loan_date);
+    const freq = loan.payment_frequency ?? "daily";
+    let cur = new Date(loanStart.getFullYear(), loanStart.getMonth(), loanStart.getDate());
+
+    while (legacyPeriodsCount > 0) {
+      if (freq === "daily") cur.setDate(cur.getDate() + 1);
+      else if (freq === "weekly") cur.setDate(cur.getDate() + 7);
+      else if (freq === "monthly") cur.setMonth(cur.getMonth() + 1);
+
+      const y = cur.getFullYear();
+      const m = (cur.getMonth() + 1).toString().padStart(2, "0");
+      const d = cur.getDate().toString().padStart(2, "0");
+      const dateStr = `${y}-${m}-${d}`;
+
+      if (!settled.has(dateStr)) {
+        settled.add(dateStr);
+        legacyPeriodsCount--;
+      }
+    }
+  }
+
+  return settled;
+}
 
 export function getUnpaidDateItems(
   loan: Loan,
@@ -34,18 +85,11 @@ export function getUnpaidDateItems(
   const today = asOfDate ?? todayLocal();
   const loanStart = parseLocalDate(loan.loan_date);
   const freq = loan.payment_frequency ?? "daily";
-
-  const activePayments = payments.filter(
-    (p) => p.loan_id === loan.id && p.status === "active"
-  );
-  const totalInterestPaid = activePayments.reduce(
-    (sum, p) => sum + (p.interest_paid ?? 0), 0
-  );
-
   const netInterest = Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0));
-  const periodsPaidCount = netInterest > 0 ? Math.floor(totalInterestPaid / netInterest) : 0;
 
+  const settledDates = getAllSettledDatesForLoan(loan, payments);
   const items: UnpaidDateItem[] = [];
+
   let currentIndex = 1;
   let currentDate = new Date(loanStart.getFullYear(), loanStart.getMonth(), loanStart.getDate());
 
@@ -62,12 +106,12 @@ export function getUnpaidDateItems(
     const isPast = itemDate.getTime() < today.getTime();
     const isToday = itemDate.getTime() === today.getTime();
 
-    if (currentIndex > periodsPaidCount) {
-      const y = itemDate.getFullYear();
-      const m = (itemDate.getMonth() + 1).toString().padStart(2, "0");
-      const d = itemDate.getDate().toString().padStart(2, "0");
-      const dateStr = `${y}-${m}-${d}`;
+    const y = itemDate.getFullYear();
+    const m = (itemDate.getMonth() + 1).toString().padStart(2, "0");
+    const d = itemDate.getDate().toString().padStart(2, "0");
+    const dateStr = `${y}-${m}-${d}`;
 
+    if (!settledDates.has(dateStr)) {
       items.push({
         periodIndex: currentIndex,
         dateStr,
@@ -95,15 +139,17 @@ export function getUnpaidDateItems(
           const nd = nextDate.getDate().toString().padStart(2, "0");
           const nextDateStr = `${ny}-${nm}-${nd}`;
 
-          items.push({
-            periodIndex: currentIndex++,
-            dateStr: nextDateStr,
-            displayDate: formatThaiDate(nextDateStr),
-            dayName: THAI_DAY_NAMES[nextDate.getDay()],
-            interestAmount: netInterest,
-            isOverdue: false,
-            isToday: false,
-          });
+          if (!settledDates.has(nextDateStr)) {
+            items.push({
+              periodIndex: currentIndex++,
+              dateStr: nextDateStr,
+              displayDate: formatThaiDate(nextDateStr),
+              dayName: THAI_DAY_NAMES[nextDate.getDay()],
+              interestAmount: netInterest,
+              isOverdue: false,
+              isToday: false,
+            });
+          }
         }
       }
       break;
@@ -147,7 +193,6 @@ export function getLoanOverdueInfo(
       let months =
         (overdueAsOf.getFullYear() - loanStart.getFullYear()) * 12 +
         (overdueAsOf.getMonth() - loanStart.getMonth());
-      // If not yet reached the same day-of-month, subtract 1
       if (overdueAsOf.getDate() < loanStart.getDate()) {
         const lastDay = new Date(overdueAsOf.getFullYear(), overdueAsOf.getMonth() + 1, 0).getDate();
         if (overdueAsOf.getDate() !== lastDay || loanStart.getDate() <= lastDay) {
@@ -158,7 +203,6 @@ export function getLoanOverdueInfo(
     }
   }
 
-  // Bug #4 fix: standardized to status === "active" for consistency across codebase
   const activePayments = payments.filter(
     (p) => p.loan_id === loan.id && p.status === "active"
   );
@@ -168,8 +212,32 @@ export function getLoanOverdueInfo(
 
   const netInterest = Math.max(0, loan.interest_per_period - (loan.guarantee_deduction ?? 0));
   const expectedInterest = elapsedPeriods * netInterest;
-  const outstandingInterest = Math.max(0, expectedInterest - totalInterestPaid);
-  const overduePeriods = netInterest > 0 ? Math.ceil(outstandingInterest / netInterest) : 0;
+
+  // Calculate overdue count based on unsettled dates before today
+  const settledDates = getAllSettledDatesForLoan(loan, payments);
+  let unsettledPastPeriods = 0;
+  let cur = new Date(loanStart.getFullYear(), loanStart.getMonth(), loanStart.getDate());
+
+  while (true) {
+    if (freq === "daily") cur.setDate(cur.getDate() + 1);
+    else if (freq === "weekly") cur.setDate(cur.getDate() + 7);
+    else if (freq === "monthly") cur.setMonth(cur.getMonth() + 1);
+
+    const itemDate = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate());
+    if (itemDate.getTime() > overdueAsOf.getTime()) break;
+
+    const y = itemDate.getFullYear();
+    const m = (itemDate.getMonth() + 1).toString().padStart(2, "0");
+    const d = itemDate.getDate().toString().padStart(2, "0");
+    const dateStr = `${y}-${m}-${d}`;
+
+    if (!settledDates.has(dateStr)) {
+      unsettledPastPeriods++;
+    }
+  }
+
+  const outstandingInterest = unsettledPastPeriods * netInterest;
+  const overduePeriods = unsettledPastPeriods;
 
   return {
     isOverdue: outstandingInterest > 0,

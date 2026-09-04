@@ -4,12 +4,12 @@ import type { Loan, Payment } from "@/types";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/stores/appStore";
-import { getLoanOverdueInfo } from "@/lib/business-logic/interest";
+import { getLoanOverdueInfo, getPaymentSettledDates } from "@/lib/business-logic/interest";
 import { formatCurrency, formatPhone, formatThaiDate, formatThaiDateTime, cn } from "@/lib/utils";
 import { DebtorAvatar } from "@/components/debtors/DebtorAvatar";
 import { PaymentSheet } from "@/components/payments/PaymentSheet";
 import { supabase } from "@/lib/supabase/client";
-import { ChevronLeft, Phone, ShieldAlert, FileText, History, Image as ImageIcon, Trash2, X, Edit2, ChevronDown, ChevronUp, CalendarRange } from "lucide-react";
+import { ChevronLeft, Phone, ShieldAlert, FileText, History, Image as ImageIcon, Trash2, X, Edit2, ChevronDown, ChevronUp, CalendarRange, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { EditDebtorSheet } from "@/components/debtors/EditDebtorSheet";
 import { AddLoanSheet } from "@/components/debtors/AddLoanSheet";
@@ -132,6 +132,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
   const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null);
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
   const [selectedScheduleLoanId, setSelectedScheduleLoanId] = useState<string | null>(null);
+  const [expandedPaymentIds, setExpandedPaymentIds] = useState<string[]>([]);
 
   const debtor = debtors.find((d) => d.id === id);
 
@@ -591,24 +592,44 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                 .map((p) => {
                   const targetLoan = loans.find((l) => l.id === p.loan_id);
                   const billLabel = targetLoan ? ` (บิล ฿${targetLoan.principal})` : "";
+                  const settledDates = getPaymentSettledDates(p);
+                  const isExpanded = expandedPaymentIds.includes(p.id);
+
                   return (
                     <div
                       key={p.id}
                       className={cn(
-                        "glass-card p-3 relative overflow-hidden",
+                        "glass-card p-3.5 relative overflow-hidden transition-all",
                         p.status === "cancelled" && "opacity-50"
                       )}
                     >
                       <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-white font-semibold text-base">
-                            {formatCurrency(p.amount)}
-                            <span className="text-xs font-bold text-violet-400 ml-1.5">{billLabel}</span>
-                          </p>
+                        <div 
+                          className="cursor-pointer flex-1"
+                          onClick={() => {
+                            if (isExpanded) {
+                              setExpandedPaymentIds(expandedPaymentIds.filter((id) => id !== p.id));
+                            } else {
+                              setExpandedPaymentIds([...expandedPaymentIds, p.id]);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-bold text-base">
+                              {formatCurrency(p.amount)}
+                              <span className="text-xs font-bold text-violet-400 ml-1.5">{billLabel}</span>
+                            </p>
+                            <span className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-md font-semibold",
+                              p.payment_method === "cash" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                            )}>
+                              {p.payment_method === "cash" ? "เงินสด" : "โอนเงิน"}
+                            </span>
+                          </div>
                           <p className="text-white/40 text-xs mt-0.5">{formatThaiDateTime(p.payment_date)}</p>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           {p.payment_method === "transfer" && (
                             <button
                               onClick={async () => {
@@ -628,6 +649,7 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                                 }
                               }}
                               className="p-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
+                              title="ดูสลิป"
                             >
                               <ImageIcon className="w-4 h-4 text-white/60" />
                             </button>
@@ -637,21 +659,76 @@ export default function DebtorDetailsPage({ params }: { params: { id: string } }
                             <button
                               onClick={() => setCancelPaymentId(p.id)}
                               className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 transition-colors text-red-400"
+                              title="ยกเลิกรายการ"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isExpanded) {
+                                setExpandedPaymentIds(expandedPaymentIds.filter((id) => id !== p.id));
+                              } else {
+                                setExpandedPaymentIds([...expandedPaymentIds, p.id]);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/50"
+                          >
+                            <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", isExpanded && "rotate-180")} />
+                          </button>
                         </div>
                       </div>
 
-                      <div className="mt-2.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-white/50">
-                        <span>หักต้น: {formatCurrency(p.principal_paid)}</span>
-                        {p.principal_discount ? (
-                          <span className="text-emerald-400">ลดต้นพิเศษ: {formatCurrency(p.principal_discount)}</span>
-                        ) : null}
-                        <span>หักดอก: {formatCurrency(p.interest_paid)}</span>
-                        <span>คงเหลือ: {formatCurrency(p.remaining_principal)}</span>
+                      {/* Quick Summary Row */}
+                      <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs text-white/60">
+                        <span>หักดอก: <strong className="text-amber-400">{formatCurrency(p.interest_paid)}</strong></span>
+                        <span>หักต้น: <strong className="text-primary-400">{formatCurrency(p.principal_paid)}</strong></span>
+                        <span>คงเหลือ: <strong className="text-white">{formatCurrency(p.remaining_principal)}</strong></span>
                       </div>
+
+                      {/* EXPANDABLE DETAILS */}
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t border-white/[0.08] space-y-2.5 animate-fade-in text-xs">
+                          {/* Settled Dates Badges */}
+                          <div>
+                            <p className="text-white/50 text-[11px] font-semibold mb-1.5 flex items-center gap-1.5">
+                              <CalendarDays className="w-3.5 h-3.5 text-violet-400" />
+                              ชำระสำหรับงวดวันที่ ({settledDates.length > 0 ? `${settledDates.length} วัน` : "คำนวณตามยอด"}):
+                            </p>
+                            {settledDates.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {settledDates.map((d) => (
+                                  <span
+                                    key={d}
+                                    className="px-2 py-0.5 rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30 font-semibold text-[11px]"
+                                  >
+                                    {formatThaiDate(d)}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-white/40 text-[11px]">ชำระตามยอดเงินรวม {formatCurrency(p.amount)}</p>
+                            )}
+                          </div>
+
+                          {/* Detailed Breakdown */}
+                          <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-black/20 border border-white/5 text-[11px]">
+                            <div className="space-y-1 text-white/60">
+                              <div>ยอดที่รับชำระ: <span className="font-bold text-white">{formatCurrency(p.amount)}</span></div>
+                              <div>หักดอกเบี้ย: <span className="font-bold text-amber-400">{formatCurrency(p.interest_paid)}</span></div>
+                            </div>
+                            <div className="space-y-1 text-white/60">
+                              <div>หักเงินต้น: <span className="font-bold text-primary-400">{formatCurrency(p.principal_paid)}</span></div>
+                              {p.principal_discount ? (
+                                <div>ส่วนลดต้น: <span className="font-bold text-emerald-400">{formatCurrency(p.principal_discount)}</span></div>
+                              ) : null}
+                              <div>เงินต้นคงเหลือ: <span className="font-bold text-white">{formatCurrency(p.remaining_principal)}</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {p.status === "cancelled" && (
                         <div className="mt-2 bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-red-400 text-[10px]">

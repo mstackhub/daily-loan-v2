@@ -180,6 +180,9 @@ export function PaymentSheet({ loanId, onClose }: Props) {
 
       const newRemaining = preview.newRemainingPrincipal;
       const isPayoff = preview.isPayoff;
+      const settledDatesStr = paymentMode === "dates" && selectedDateKeys.length > 0
+        ? `DATES:${selectedDateKeys.join(",")}`
+        : "";
 
       // Insert payment
       const { data: payment, error: payErr } = await supabase
@@ -195,6 +198,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
           payment_method: method,
           slip_image_url: slipImageUrl,
           status: "active",
+          cancel_reason: settledDatesStr,
           principal_discount: numDiscount,
         })
         .select()
