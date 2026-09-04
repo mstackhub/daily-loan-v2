@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/stores/appStore";
 import { calculatePaymentPreview, getUnpaidDateItems } from "@/lib/business-logic/interest";
 import { supabase } from "@/lib/supabase/client";
-import { formatCurrency, compressImage, formatThaiDate } from "@/lib/utils";
-import { X, Zap, Banknote, Smartphone, AlertTriangle, CheckCircle2, CalendarDays, CheckSquare, Square, Layers } from "lucide-react";
+import { formatCurrency, compressImage } from "@/lib/utils";
+import { X, Zap, Banknote, Smartphone, AlertTriangle, CheckCircle2, CalendarDays, CheckCircle, Circle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getQrCodeUrl } from "@/lib/business-logic/promptpay";
 
@@ -48,7 +48,6 @@ export function PaymentSheet({ loanId, onClose }: Props) {
   // Initial selection: Select overdue dates and today if available
   useEffect(() => {
     if (unpaidDates.length > 0 && selectedDateKeys.length === 0) {
-      // By default, select all overdue dates + today (or the first 1 date if none overdue)
       const initial = unpaidDates.filter((u) => u.isOverdue || u.isToday).map((u) => u.dateStr);
       if (initial.length > 0) {
         setSelectedDateKeys(initial);
@@ -89,7 +88,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
         newRemainingPrincipal: newRemaining,
         isPayoff,
         isOverpayment: false,
-        isUnderpayment: numAmount < netInterest && !isPayoff,
+        isUnderpayment: numAmount < netInterest && !isPayoff && selectedDateKeys.length === 0,
         payoffAmount,
         periodInterest: netInterest,
         warning: undefined,
@@ -106,7 +105,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
       }
     }
     return p;
-  }, [loan, loanPayments, paymentMode, numAmount, selectedInterestTotal, numExtraPrincipal, numDiscount, netInterest, paymentDate]);
+  }, [loan, loanPayments, paymentMode, numAmount, selectedInterestTotal, numExtraPrincipal, numDiscount, netInterest, paymentDate, selectedDateKeys.length]);
 
   const selectedBank = bankAccounts.find((b) => b.id === selectedBankId);
   const promptpayId = settings?.promptpay_id || "";
@@ -135,7 +134,6 @@ export function PaymentSheet({ loanId, onClose }: Props) {
   function setPayoffAmount() {
     if (!loan) return;
     if (paymentMode === "dates") {
-      // Select all unpaid dates and set extra principal to full remaining
       selectAllDates();
       setExtraPrincipal(loan.remaining_principal.toString());
     } else if (preview) {
@@ -158,7 +156,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
   async function handleSubmit() {
     if (!loan || !debtor || !preview || numAmount <= 0) return;
     if (preview.isUnderpayment) {
-      showToast(`ยอดน้อยกว่าดอกเบี้ย 1 งวด (${formatCurrency(netInterest)})`, "warning");
+      showToast(`กรุณาเลือกอย่างน้อย 1 วัน หรือระบุยอดชำระขั้นต่ำ (${formatCurrency(netInterest)})`, "warning");
       return;
     }
 
@@ -247,48 +245,59 @@ export function PaymentSheet({ loanId, onClose }: Props) {
   return (
     <>
       <div className="sheet-overlay animate-fade-in" onClick={onClose} />
-      <div className="sheet-container animate-slide-up max-h-[92vh] flex flex-col">
-        <div className="sheet-handle" />
+      <div className="sheet-container animate-slide-up max-h-[92vh] flex flex-col bg-white text-slate-800 shadow-2xl rounded-t-3xl">
+        <div className="sheet-handle bg-slate-300" />
 
-        <div className="flex items-center justify-between px-4 mb-3">
-          <h2 className="text-lg font-bold text-white">รับชำระเงิน</h2>
-          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-            <X className="w-4 h-4 text-white/60" />
+        {/* Title Bar */}
+        <div className="flex items-center justify-between px-5 pt-1 pb-3 border-b border-slate-100">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">รับชำระเงิน</h2>
+            <p className="text-xs text-slate-400">บันทึกดอกเบี้ยและยอดผ่อนชำระ</p>
+          </div>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors text-slate-500 hover:text-slate-700"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-4 space-y-4 overflow-y-auto pb-6">
-          {/* Debtor info card */}
-          <div className="glass-card-sm p-3 flex items-center gap-3 bg-white/[0.03] border-white/10">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center text-white font-bold">
-              {debtor.full_name.charAt(0)}
+        <div className="px-5 space-y-4 overflow-y-auto py-4 pb-8 no-scrollbar">
+          {/* Debtor Profile Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-base shadow-sm shadow-violet-500/30">
+                {debtor.full_name.charAt(0)}
+              </div>
+              <div>
+                <p className="text-slate-900 font-bold text-sm leading-tight">{debtor.full_name}</p>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  ค้างต้น <span className="font-bold text-slate-900">{formatCurrency(loan.remaining_principal)}</span> | ดอก <span className="font-bold text-violet-600">{formatCurrency(netInterest)}</span>/วัน
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-white font-semibold text-sm">{debtor.full_name}</p>
-              <p className="text-white/40 text-xs">
-                ค้างต้น <span className="text-white font-bold">{formatCurrency(loan.remaining_principal)}</span> | ดอก <span className="text-violet-400 font-bold">{formatCurrency(netInterest)}</span>/วัน
-              </p>
-            </div>
+
             <button
               type="button"
               onClick={setPayoffAmount}
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-1 hover:bg-emerald-500/20 active:scale-95 transition-all"
+              className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1 active:scale-95 transition-all shadow-xs"
             >
-              <Zap className="w-3 h-3" />
+              <Zap className="w-3.5 h-3.5 fill-emerald-500 text-emerald-600" />
               ปิดยอด
             </button>
           </div>
 
-          {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-white/[0.04] border border-white/10 rounded-xl">
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100/90 border border-slate-200/60 rounded-xl">
             <button
               type="button"
               onClick={() => setPaymentMode("dates")}
               className={cn(
-                "py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all",
+                "py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all",
                 paymentMode === "dates"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-white/50 hover:text-white"
+                  ? "bg-white text-violet-700 shadow-sm border border-slate-200/60"
+                  : "text-slate-500 hover:text-slate-900"
               )}
             >
               <CalendarDays className="w-3.5 h-3.5" />
@@ -298,10 +307,10 @@ export function PaymentSheet({ loanId, onClose }: Props) {
               type="button"
               onClick={() => setPaymentMode("custom")}
               className={cn(
-                "py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all",
+                "py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all",
                 paymentMode === "custom"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-white/50 hover:text-white"
+                  ? "bg-white text-violet-700 shadow-sm border border-slate-200/60"
+                  : "text-slate-500 hover:text-slate-900"
               )}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -313,29 +322,29 @@ export function PaymentSheet({ loanId, onClose }: Props) {
           {paymentMode === "dates" && (
             <div className="space-y-3">
               {/* Quick Actions Bar */}
-              <div className="flex items-center justify-between gap-1 text-xs">
-                <span className="text-white/60 font-medium">
-                  เลือกแล้ว: <span className="text-violet-400 font-bold">{selectedDateKeys.length}</span> วัน ({formatCurrency(selectedInterestTotal)})
+              <div className="flex items-center justify-between text-xs px-0.5">
+                <span className="text-slate-600 font-medium">
+                  เลือกแล้ว: <span className="text-violet-700 font-extrabold text-sm">{selectedDateKeys.length}</span> วัน <span className="font-bold text-slate-800">({formatCurrency(selectedInterestTotal)})</span>
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={selectAllDates}
-                    className="px-2 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-white/70 text-[11px] transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition-colors"
                   >
                     เลือกหมด
                   </button>
                   <button
                     type="button"
                     onClick={selectOverdueDatesOnly}
-                    className="px-2 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-amber-400 text-[11px] transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-semibold text-[11px] transition-colors"
                   >
                     เฉพาะที่ค้าง
                   </button>
                   <button
                     type="button"
                     onClick={clearDateSelection}
-                    className="px-2 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-white/40 text-[11px] transition-colors"
+                    className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 font-semibold text-[11px] transition-colors"
                   >
                     ล้าง
                   </button>
@@ -343,10 +352,10 @@ export function PaymentSheet({ loanId, onClose }: Props) {
               </div>
 
               {/* Dates Checklist Box */}
-              <div className="max-h-56 overflow-y-auto space-y-1.5 p-1 border border-white/10 rounded-xl bg-black/20 no-scrollbar">
+              <div className="max-h-64 overflow-y-auto space-y-2 p-2 border border-slate-200 rounded-2xl bg-slate-50/70 no-scrollbar">
                 {unpaidDates.length === 0 ? (
-                  <div className="py-6 text-center text-white/30 text-xs">
-                    ไม่มีวันที่ค้างชำระ (ชำระครบถ้วนแล้ว)
+                  <div className="py-8 text-center text-slate-400 text-xs font-medium">
+                    ไม่มีวันที่ค้างชำระ (ชำระดอกเบี้ยครบถ้วนแล้ว)
                   </div>
                 ) : (
                   unpaidDates.map((item) => {
@@ -356,37 +365,51 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                         key={item.dateStr}
                         onClick={() => toggleDate(item.dateStr)}
                         className={cn(
-                          "flex items-center justify-between p-2.5 rounded-lg border cursor-pointer select-none transition-all active:scale-[0.99]",
+                          "flex items-center justify-between p-3 rounded-xl border cursor-pointer select-none transition-all duration-150 active:scale-[0.99]",
                           isSelected
-                            ? "bg-violet-600/20 border-violet-500/60 shadow-sm"
-                            : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04]"
+                            ? "bg-violet-600 text-white border-violet-600 shadow-sm shadow-violet-500/20 font-medium"
+                            : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 shadow-xs"
                         )}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <div className={cn(
-                            "w-5 h-5 rounded flex items-center justify-center transition-colors",
-                            isSelected ? "text-violet-400" : "text-white/20"
-                          )}>
-                            {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center">
+                            {isSelected ? (
+                              <CheckCircle className="w-5 h-5 text-white fill-white/20" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400" />
+                            )}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-white text-xs font-semibold">{item.displayDate}</span>
-                              <span className="text-white/40 text-[10px]">({item.dayName})</span>
+                              <span className={cn("text-sm font-bold", isSelected ? "text-white" : "text-slate-800")}>
+                                {item.displayDate}
+                              </span>
+                              <span className={cn("text-xs", isSelected ? "text-violet-200" : "text-slate-400")}>
+                                ({item.dayName})
+                              </span>
                             </div>
                             <div className="flex items-center gap-1 mt-0.5">
                               {item.isOverdue && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-medium">
+                                <span className={cn(
+                                  "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                                  isSelected ? "bg-white/20 text-white" : "bg-rose-50 text-rose-600 border border-rose-200"
+                                )}>
                                   ค้างชำระ
                                 </span>
                               )}
                               {item.isToday && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-medium">
+                                <span className={cn(
+                                  "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                                  isSelected ? "bg-amber-400 text-slate-900" : "bg-amber-50 text-amber-700 border border-amber-200"
+                                )}>
                                   วันนี้
                                 </span>
                               )}
                               {!item.isOverdue && !item.isToday && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-500/20 text-slate-300">
+                                <span className={cn(
+                                  "text-[10px] px-2 py-0.5 rounded-full font-medium",
+                                  isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                                )}>
                                   ล่วงหน้า
                                 </span>
                               )}
@@ -395,7 +418,7 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                         </div>
 
                         <div className="text-right">
-                          <span className="text-xs font-bold text-white">
+                          <span className={cn("text-sm font-extrabold", isSelected ? "text-white" : "text-slate-800")}>
                             {formatCurrency(item.interestAmount)}
                           </span>
                         </div>
@@ -406,24 +429,24 @@ export function PaymentSheet({ loanId, onClose }: Props) {
               </div>
 
               {/* Extra Principal & Discount */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-2.5 pt-0.5">
                 <div>
-                  <label className="input-label text-xs">ลดเงินต้นเพิ่ม (บาท)</label>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">ลดเงินต้นเพิ่ม (บาท)</label>
                   <input
                     type="number"
                     value={extraPrincipal}
                     onChange={(e) => setExtraPrincipal(e.target.value)}
-                    className="input-field py-2 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-bold text-sm focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/10 placeholder:text-slate-300"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label className="input-label text-xs">ส่วนลดต้นพิเศษ (บาท)</label>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">ส่วนลดต้นพิเศษ (บาท)</label>
                   <input
                     type="number"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
-                    className="input-field py-2 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-bold text-sm focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/10 placeholder:text-slate-300"
                     placeholder="0"
                   />
                 </div>
@@ -435,14 +458,14 @@ export function PaymentSheet({ loanId, onClose }: Props) {
           {paymentMode === "custom" && (
             <div className="space-y-3">
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="input-label mb-0">จำนวนเงินรวม (บาท)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700">จำนวนเงินรวม (บาท)</label>
                   <button
                     type="button"
                     onClick={setPayoffAmount}
-                    className="flex items-center gap-1 text-primary-400 text-xs font-medium"
+                    className="flex items-center gap-1 text-violet-600 font-bold text-xs"
                   >
-                    <Zap className="w-3 h-3" />
+                    <Zap className="w-3.5 h-3.5" />
                     ปิดยอด {preview ? formatCurrency(preview.payoffAmount) : ""}
                   </button>
                 </div>
@@ -450,18 +473,18 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="input-field text-xl font-bold"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xl font-extrabold focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/10"
                   placeholder="0"
                 />
               </div>
 
               <div>
-                <label className="input-label">ส่วนลดเงินต้นลดต้นพิเศษ (บาท)</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">ส่วนลดเงินต้นลดต้นพิเศษ (บาท)</label>
                 <input
                   type="number"
                   value={discount}
                   onChange={(e) => setDiscount(e.target.value)}
-                  className="input-field"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-bold text-sm focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/10 placeholder:text-slate-300"
                   placeholder="0"
                 />
               </div>
@@ -470,63 +493,65 @@ export function PaymentSheet({ loanId, onClose }: Props) {
 
           {/* Date of payment */}
           <div>
-            <label className="input-label text-xs">วันที่บันทึกชำระเงิน</label>
+            <label className="text-[11px] font-bold text-slate-700 block mb-1">วันที่บันทึกชำระเงิน</label>
             <input
               type="date"
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
-              className="input-field py-2 text-sm"
+              className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm font-medium focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/10"
             />
           </div>
 
           {/* Summary Preview Card */}
           {preview && numAmount > 0 && (
             <div className={cn(
-              "glass-card-sm p-3 space-y-2 border",
-              preview.isPayoff ? "border-emerald-500/40 bg-emerald-500/5" : "border-white/10 bg-white/[0.03]"
+              "p-3.5 rounded-2xl border space-y-2.5 transition-all shadow-xs",
+              preview.isPayoff 
+                ? "bg-emerald-50/80 border-emerald-300" 
+                : "bg-gradient-to-br from-slate-50 to-slate-100/80 border-slate-200"
             )}>
               {preview.isPayoff && (
-                <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
-                  <CheckCircle2 className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   ปิดยอดหนี้สัญญานี้สำเร็จ! 🎉
                 </div>
               )}
               {preview.warning && (
-                <div className="flex items-center gap-1.5 text-amber-400 text-xs font-medium">
-                  <AlertTriangle className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-amber-800 text-xs font-semibold">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
                   {preview.warning}
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                <div className="p-2 rounded-lg bg-black/20">
-                  <p className="text-white/40 text-[10px]">หักดอก</p>
-                  <p className="text-amber-400 text-sm font-bold">{formatCurrency(preview.interestPaid)}</p>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-white border border-amber-200/80 shadow-xs">
+                  <p className="text-amber-800 text-[10px] font-bold">หักดอก</p>
+                  <p className="text-amber-600 text-base font-extrabold">{formatCurrency(preview.interestPaid)}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-black/20">
-                  <p className="text-white/40 text-[10px]">ลดต้น</p>
-                  <p className="text-primary-400 text-sm font-bold">{formatCurrency(preview.principalPaid)}</p>
+                <div className="p-2.5 rounded-xl bg-white border border-violet-200/80 shadow-xs">
+                  <p className="text-violet-800 text-[10px] font-bold">ลดต้น</p>
+                  <p className="text-violet-600 text-base font-extrabold">{formatCurrency(preview.principalPaid)}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-black/20">
-                  <p className="text-white/40 text-[10px]">ต้นคงเหลือ</p>
-                  <p className="text-white text-sm font-bold">{formatCurrency(preview.newRemainingPrincipal)}</p>
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-xs">
+                  <p className="text-slate-500 text-[10px] font-bold">ต้นคงเหลือ</p>
+                  <p className="text-slate-900 text-base font-extrabold">{formatCurrency(preview.newRemainingPrincipal)}</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Payment method */}
+          {/* Payment Method Selector */}
           <div>
-            <label className="input-label text-xs">วิธีชำระ</label>
+            <label className="text-[11px] font-bold text-slate-700 block mb-1">วิธีชำระ</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setMethod("cash")}
                 className={cn(
-                  "flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-medium transition-all",
+                  "flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-xs",
                   method === "cash"
-                    ? "bg-primary-500/20 border-primary-500/50 text-primary-400 font-bold"
-                    : "bg-white/[0.04] border-white/10 text-white/50"
+                    ? "bg-violet-600 border-violet-600 text-white shadow-violet-500/20"
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                 )}
               >
                 <Banknote className="w-4 h-4" /> เงินสด
@@ -535,10 +560,10 @@ export function PaymentSheet({ loanId, onClose }: Props) {
                 type="button"
                 onClick={() => setMethod("transfer")}
                 className={cn(
-                  "flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-medium transition-all",
+                  "flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-xs",
                   method === "transfer"
-                    ? "bg-primary-500/20 border-primary-500/50 text-primary-400 font-bold"
-                    : "bg-white/[0.04] border-white/10 text-white/50"
+                    ? "bg-violet-600 border-violet-600 text-white shadow-violet-500/20"
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                 )}
               >
                 <Smartphone className="w-4 h-4" /> โอนเงิน
@@ -546,19 +571,19 @@ export function PaymentSheet({ loanId, onClose }: Props) {
             </div>
           </div>
 
-          {/* Transfer details */}
+          {/* Transfer Details */}
           {method === "transfer" && (
-            <div className="space-y-3">
+            <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
               {bankAccounts.length > 0 && (
                 <div>
-                  <label className="input-label text-xs">บัญชีรับโอน</label>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">บัญชีรับโอน</label>
                   <select
                     value={selectedBankId}
                     onChange={(e) => setSelectedBankId(e.target.value)}
-                    className="input-field text-xs py-2"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-medium focus:outline-none focus:border-violet-500"
                   >
                     {bankAccounts.map((b) => (
-                      <option key={b.id} value={b.id} className="bg-dark-800">
+                      <option key={b.id} value={b.id}>
                         {b.bank_name} — {b.acc_no} ({b.acc_name})
                       </option>
                     ))}
@@ -568,35 +593,35 @@ export function PaymentSheet({ loanId, onClose }: Props) {
 
               {/* QR Code */}
               {selectedBank?.type === "PromptPay" && numAmount > 0 && promptpayId && (
-                <div className="flex flex-col items-center p-3 glass-card-sm">
+                <div className="flex flex-col items-center p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={getQrCodeUrl(promptpayId, numAmount, 200)}
                     alt="QR Code"
                     className="w-36 h-36 rounded-xl"
                   />
-                  <p className="text-white/40 text-[10px] mt-1.5">PromptPay {promptpayId}</p>
+                  <p className="text-slate-500 text-[11px] font-semibold mt-1.5">PromptPay {promptpayId}</p>
                 </div>
               )}
 
-              {/* Slip upload */}
+              {/* Slip Upload */}
               <div>
-                <label className="input-label text-xs">แนบสลิป (ไม่บังคับ)</label>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">แนบสลิป (ไม่บังคับ)</label>
                 {slipFile ? (
-                  <div className="relative w-20 h-20 rounded-xl overflow-hidden">
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-xs">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={slipFile.previewUrl} alt="slip" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setSlipFile(null)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"
+                      className="absolute top-1 right-1 w-5 h-5 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black"
                     >
-                      <X className="w-3 h-3 text-white" />
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 ) : (
-                  <label className="flex items-center gap-2 px-3 py-2.5 glass-card-sm cursor-pointer hover:bg-white/10 transition-colors">
-                    <span className="text-white/50 text-xs">📎 เลือกรูปสลิป</span>
+                  <label className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors shadow-xs">
+                    <span className="text-slate-600 text-xs font-medium">📎 เลือกรูปสลิป</span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleSlipUpload} />
                   </label>
                 )}
@@ -604,11 +629,11 @@ export function PaymentSheet({ loanId, onClose }: Props) {
             </div>
           )}
 
-          {/* Submit */}
+          {/* Submit Button */}
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || numAmount <= 0}
-            className="btn-primary w-full text-center py-3 text-sm font-bold shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-transform"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-sm shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-all"
           >
             {isSubmitting ? "กำลังบันทึก..." : `รับเงิน ${numAmount > 0 ? formatCurrency(numAmount) : ""}`}
           </button>
