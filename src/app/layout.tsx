@@ -11,12 +11,12 @@ const notoSansThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "DebtFlow V2 — ระบบบริหารลูกหนี้รายวัน",
+  title: "DebtFlow — ระบบบริหารลูกหนี้รายวัน",
   description: "ระบบจัดการลูกหนี้รายวันที่ทันสมัย รวดเร็ว และใช้งานง่าย",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "DebtFlow",
   },
 };
@@ -25,7 +25,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#0a0a0f",
+  themeColor: "#7c3aed",
 };
 
 export default function RootLayout({

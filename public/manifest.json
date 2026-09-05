@@ -1,10 +1,11 @@
 {
-  "name": "DebtFlow V2",
+  "name": "DebtFlow — ระบบบริหารลูกหนี้รายวัน",
   "short_name": "DebtFlow",
-  "description": "ระบบบริหารลูกหนี้รายวัน",
+  "description": "ระบบจัดการลูกหนี้รายวันที่ทันสมัย รวดเร็ว และใช้งานง่าย",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0a0f",
+  "background_color": "#ffffff",
   "theme_color": "#7c3aed",
   "orientation": "portrait",
   "icons": [
@@ -17,7 +18,8 @@
     {
       "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }
