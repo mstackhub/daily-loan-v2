@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ToastDisplay } from "@/components/shared/Toast";
 import { DataLoader } from "@/components/shared/DataLoader";
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay";
+import { PwaInstallPrompt } from "@/components/shared/PwaInstallPrompt";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -36,6 +37,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <LoadingOverlay />
       {children}
       <ToastDisplay />
+      <PwaInstallPrompt />
     </QueryClientProvider>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/stores/appStore";
 import { supabase } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
-import { CreditCard, Plus, Trash2, Key, Check } from "lucide-react";
+import { CreditCard, Plus, Trash2, Key, Check, Download, Smartphone, Share2, PlusSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BANK_OPTIONS = [
@@ -26,6 +26,39 @@ export default function SettingsPage() {
   const [ppId, setPpId] = useState(settings?.promptpay_id || "");
   const [defaultInterest, setDefaultInterest] = useState(settings?.default_interest_per_day?.toString() || "100");
   const [defaultMinDays, setDefaultMinDays] = useState(settings?.default_minimum_days?.toString() || "5");
+
+  // PWA state
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const isStandaloneMode =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    setIsStandalone(isStandaloneMode);
+
+    const handlePrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handlePrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handlePrompt);
+  }, []);
+
+  async function handleInstallPwa() {
+    const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    if (isIos || !deferredPrompt) {
+      setShowIosGuide(true);
+      return;
+    }
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result.outcome === "accepted") {
+      setIsStandalone(true);
+      showToast("ติดตั้งแอปเรียบร้อยแล้ว 🎉", "success");
+    }
+  }
 
   // Bank account form
   const [bankType, setBankType] = useState<"PromptPay" | "Bank">("Bank");
@@ -502,6 +535,123 @@ export default function SettingsPage() {
           <Key className="w-4 h-4" /> อัปเดตรหัส PIN
         </button>
       </div>
+
+      {/* PWA App Installation Card */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white shadow-sm shadow-violet-500/25">
+              <Smartphone className="w-5 h-5 text-white-force" />
+            </div>
+            <div>
+              <p className="text-slate-900 font-bold text-sm">การติดตั้งแอป (PWA)</p>
+              <p className="text-slate-400 text-xs">ใช้งานได้เหมือนแอปจริงบนมือถือ</p>
+            </div>
+          </div>
+          {isStandalone ? (
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+              ✅ ติดตั้งแล้ว
+            </span>
+          ) : (
+            <span className="px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 border border-violet-200 text-xs font-bold">
+              พร้อมติดตั้ง
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-500 leading-relaxed">
+          ติดตั้ง DebtFlow ลงบนหน้าจอมือถือ (iOS / Android) หรือคอมพิวเตอร์ เพื่อเปิดใช้งานได้รวดเร็วทันใจ เต็มหน้าจอ ไม่มีแถบเบราว์เซอร์กวนใจ
+        </p>
+
+        {!isStandalone ? (
+          <button
+            type="button"
+            onClick={handleInstallPwa}
+            className="btn-primary w-full py-2.5 text-sm font-bold flex items-center justify-center gap-2 text-white-force"
+          >
+            <Download className="w-4 h-4" /> ติดตั้งแอป DebtFlow ลงเครื่อง
+          </button>
+        ) : (
+          <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-800 text-xs font-semibold text-center">
+            🎉 แอปพลิเคชันถูกติดตั้งลงบนเครื่องนี้เรียบร้อยแล้ว
+          </div>
+        )}
+      </div>
+
+      {/* iOS Installation Guide Modal */}
+      {showIosGuide && (
+        <>
+          <div className="sheet-overlay animate-fade-in" onClick={() => setShowIosGuide(false)} />
+          <div className="sheet-container animate-slide-up max-w-md mx-auto bg-white rounded-t-3xl p-5 shadow-2xl text-slate-800 z-50">
+            <div className="sheet-handle bg-slate-300 mb-3" />
+
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white shadow-sm">
+                  <Smartphone className="w-5 h-5 text-white-force" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">วิธีติดตั้งแอปบนหน้าจอ</h3>
+                  <p className="text-xs text-slate-400">สำหรับ iPhone / iPad (Safari)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIosGuide(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3.5 text-sm">
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <div className="w-7 h-7 rounded-xl bg-violet-100 text-violet-700 font-bold flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                  1
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                    แตะที่ปุ่ม <Share2 className="w-4 h-4 text-blue-500" /> <span className="text-blue-600">แชร์ (Share)</span>
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">ที่แถบเมนูด้านล่างสุดของ Safari</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <div className="w-7 h-7 rounded-xl bg-violet-100 text-violet-700 font-bold flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                  2
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                    เลือก <PlusSquare className="w-4 h-4 text-violet-600" /> <span className="text-violet-700">เพิ่มไปยังหน้าจอโฮม</span>
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">(Add to Home Screen)</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <div className="w-7 h-7 rounded-xl bg-violet-100 text-violet-700 font-bold flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                  3
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                    แตะ <span className="font-extrabold text-blue-600">"เพิ่ม" (Add)</span> ที่มุมขวาบน
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">แอปจะไปปรากฏเป็นไอคอนบนหน้าจอมือถือทันที!</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowIosGuide(false)}
+              className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors"
+            >
+              เข้าใจแล้ว ปิดหน้าต่างนี้
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
